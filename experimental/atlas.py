@@ -5,10 +5,10 @@ Overview:
 - an atlas will be a tuple of Chart instances
 - each Chart contains a CoordinateDomain instance and three functions: psi, phi, g.
 - A CoordinateDomain consists of interior and boundary points, to allow some neat domain switching logic
-    ---> all these are combined in this intended way in the main multi chart NGF model, the class TangetBundle_multi_chart_atlas
+    ---> all these are combined in this intended way in the main multi chart NGF model, the class TangentBundle_multi_chart_atlas
 
 - create_coordinate_domains and create_atlas are methods meant to be used for learning, starting with a dataset
-  and ending up with a tuple "atlas" that can be passed to an instance of TangetBundle_multi_chart_atlas
+  and ending up with a tuple "atlas" that can be passed to an instance of TangentBundle_multi_chart_atlas
 """
 
 import jax
@@ -42,7 +42,21 @@ class CoordinateDomain(eqx.Module):
         self.boundary_points = boundary_points
         self.boundary_new_chart_ids = boundary_new_chart_ids
 
-#The main NGF model TangetBundle_multi_chart_atlas has as its core a tuple "atlas"
+        assert self.boundary_points.shape[0] == self.boundary_new_chart_ids.shape[0], \
+            "Mismatch between boundary points and boundary_new_chart_ids amount"
+
+    def get_high_level_parameters(self):
+
+        params = {
+            'centroid_shape' : self.centroid.shape,
+            'interior_points_shape' : self.interior_points.shape,
+            'boundary_points_shape' : self.boundary_points.shape,
+            'boundary_new_chart_ids_shape' : self.boundary_new_chart_ids.shape,
+            }
+
+        return params
+
+#The main NGF model TangentBundle_multi_chart_atlas has as its core a tuple "atlas"
 #of Chart instances. These are all responsible for a certain coordinate domain
 class Chart(eqx.Module):
 
@@ -160,10 +174,15 @@ class Chart(eqx.Module):
 
 
 #CURRENTLY HARDCODED FOR THE TWO SPHERE WITH TWO COORDIANTE DOMAINS: SLIGHTLY EXTENDED UPPER AND LOWER HEMISPHERES
+#WHEN YOU GENERALIZE THIS: KEEP IT AS IS IN AN APPLICATION OF ANALYTICAL GEOMETRY
 #this method turns a manifold given as a collection of data points into
 #a partition of clusters. It then extends the clusters to overlaping clusters.
-#these are the domains. It returns these domains in the tuple format specified in the class Chart
-def create_coordinate_domains(dataset, k, extension_degree):
+#these are the domains. It returns these domains in the tuple format specified in the class Chart.
+#We need to know if dataset (which is a manifold) is a tangent bundle or not.
+#if it is we partition in the projection to the non tangent part
+#the full domains are then this partition x R^dim, and the centroid are with the zero tangent vector.
+#IN THE CURRENT HARDCODING IT IS A TANGENT BUNDLE
+def create_coordinate_domains(dataset, amount_of_domains, extension_degree, is_tangent_bundle):
 
     #returns tuple (or better different format?) of clusters, each point marked as interior, and one as the centroid
     def k_means(dataset, k):
@@ -197,8 +216,8 @@ def create_coordinate_domains(dataset, k, extension_degree):
     lower_boundary_new_chart_ids = jnp.ones(lower_boundary_points.shape[0], dtype=int) * 0  # belong to the interior of chart 0
 
     #create centroids
-    upper_centroid =  jnp.array([0.0,0.0,1.0])
-    lower_centroid =  jnp.array([0.0,0.0,-1.0])
+    upper_centroid =  jnp.array([0,0,1.0,0,0,0])
+    lower_centroid =  jnp.array([0,0,-1.0,0,0,0])
 
 
     #finally create the coordinate_domains of the correct structure
@@ -237,7 +256,7 @@ def create_atlas(domains: tuple,
 
     for i, domain in enumerate(domains):
 
-        psi = psi_initializer(psi_arguments, keys[i])
+        psi = psi_initializer(psi_arguments, psi_keys[i])
         phi = phi_initializer(phi_arguments, phi_keys[i])
         g = g_initializer(g_arguments, g_keys[i])
 
@@ -253,7 +272,7 @@ def create_atlas(domains: tuple,
 
 
 
-#NOT USED AT THE MOMENT, EXCEPT IN (ALSO NOT USED AND INCOMPLETE) TangetBundle_partition_of_unity_atlas
+#NOT USED AT THE MOMENT, EXCEPT IN (ALSO NOT USED AND INCOMPLETE) TangentBundle_partition_of_unity_atlas
 class Neural_partition_of_unity(eqx.Module):
     #neural network that takes an input x and outputs a smooth assignment of numbers p_1,...,p_k in [0,1]
     #such that p_1 + ... + p_k = 1

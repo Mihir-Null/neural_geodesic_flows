@@ -12,8 +12,6 @@ from tests.utils import (
     test_metric_evaluation,
 )
 
-from core.models import TangentBundle
-
 from core.template_psi_phi_g_functions_analytical import (
     two_body_Jacobi_metric,
 )

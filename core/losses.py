@@ -5,6 +5,14 @@ Collection of loss functions
 import jax
 import jax.numpy as jnp
 
+#the below prediction losses needs to behave differently in the single and multi chart approach,
+#namely, in the multi chart approach latent points are tuples (chart_id, z), in the single chart they are arrays z
+#we check which one it is at trace time using this auxiliary method
+#(so that it does not re-check every call, but just once at trace time)
+def is_multi_chart(tangentbundle):
+
+    return tangentbundle.is_multi_chart
+
 #expect data of shape (batch_size, mathematical dimension), (batch_size,mathematical dimension), (batch_size)
 def reconstruction_loss(tangentbundle, inputs, targets, times):
 
@@ -46,7 +54,18 @@ def input_target_loss(tangentbundle, inputs, targets, times):
 
     #measure the quality of the predicition by MSE
     predictive_error = jnp.mean((predictions - targets)**2)
-    latent_predictive_error = jnp.mean((latent_predictions - latent_targets)**2)
+
+    #measure the MSE of the predicted versus the target in latent space
+    if is_multi_chart(tangentbundle):
+
+        _, z_pred = latent_predictions
+        _, z_targ = latent_targets
+
+        latent_predictive_error = jnp.mean((z_pred - z_targ)**2)
+
+    else:
+
+        latent_predictive_error = jnp.mean((latent_predictions - latent_targets)**2)
 
     #measure the quality of the reconstruction by MSE
     reconstructive_error = jnp.mean((reconstructions_inputs - inputs)**2 + (reconstructions_targets - targets)**2)
@@ -72,6 +91,7 @@ def trajectory_reconstruction_loss(tangentbundle, trajectories, times):
 
     #loss
     return reconstructive_error
+
 
 #expect data of shape (batch_size, time steps, mathematical dimension), (batch_size,time steps)
 def trajectory_prediction_loss(tangentbundle, trajectories, times):
@@ -115,7 +135,16 @@ def trajectory_prediction_loss(tangentbundle, trajectories, times):
     decoded_geodesics = decode_many_geodesics(geodesics)
 
     #measure the deviation of the predicted versus the given trajectory in latent space
-    predictive_error_latentspace = jnp.mean((encoded_trajectories - geodesics)**2)
+    if is_multi_chart(tangentbundle):
+
+        _, z_geodesics = geodesics
+        _, z_encoded_trajectories = encoded_trajectories
+
+        predictive_error_latentspace = jnp.mean((z_encoded_trajectories - z_geodesics)**2)
+
+    else:
+
+        predictive_error_latentspace = jnp.mean((encoded_trajectories - geodesics)**2)
 
     #measure the deviation of the predicted versus the given trajectory in dataspace
     predictive_error_dataspace = jnp.mean((trajectories - decoded_geodesics)**2)

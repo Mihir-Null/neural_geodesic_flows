@@ -1,8 +1,5 @@
 """
-Test everything that we've implemented so far:
-
-- create a multi chart tangent bundle for the two sphere
-- calculate some geodesic on it with chart switching and plot it
+Ad-hoc testing of things that we've implemented so far.
 """
 
 import jax
@@ -40,8 +37,8 @@ from experimental.atlas import (
     Chart,
 )
 
-from experimental.tangent_bundle import (
-    TangetBundle_multi_chart_atlas as TangetBundle,
+from experimental.models import (
+    TangentBundle_multi_chart_atlas as TangentBundle,
 )
 
 ### load the sphere data ###
@@ -53,10 +50,13 @@ trajectories, times = data
 ### create 2 coordinate domains ###
 
 #extract and flatten positions (x, y, z)
-sphere = trajectories[..., 0:3].reshape(-1, 3)  # shape (size*time, 3)
+sphere = trajectories.reshape(-1, 6)  # shape (size*time, 6)
 
 #apply masks to get coordinate domains
-extended_upper_hemisphere, extended_lower_hemisphere = create_coordinate_domains(sphere, k = 2, extension_degree = 0)
+extended_upper_hemisphere, extended_lower_hemisphere = create_coordinate_domains(sphere,
+                                                                                 amount_of_domains = 2,
+                                                                                 extension_degree = 0,
+                                                                                 is_tangent_bundle = True)
 
 #initialize chart eqx.modules
 psi_extended_upper_hemisphere = psi_S2_spherical#psi_S2_inverted_stereographic
@@ -83,8 +83,21 @@ chart_lower_hemisphere = Chart(coordinate_domain = extended_lower_hemisphere,
 sphere_atlas = (chart_upper_hemisphere, chart_lower_hemisphere)
 
 ### build a spherebundle and test global dynamics ###
-sphere_bundle = TangetBundle(atlas = sphere_atlas)
+sphere_bundle = TangentBundle(atlas = sphere_atlas)
 
+"""
+#define a saved model (has to be one saved in data/models/)
+model_name = "multi-chart_sphere-model"
+
+psi_initializer = NN_Jacobian_split_diffeomorphism
+phi_initializer = NN_Jacobian_split_diffeomorphism
+g_initializer = NN_metric
+
+sphere_bundle = load_model(model_name,
+                   psi_initializer = psi_initializer,
+                   phi_initializer = phi_initializer,
+                   g_initializer = g_initializer)
+"""
 
 #initial point in the chart (consists of initial theta, phi, v^theta, v^phi)
 initial_point = jnp.array([0.5, -0.4, -0.9, 0.3])

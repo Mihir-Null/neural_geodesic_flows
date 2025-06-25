@@ -14,7 +14,7 @@ import jax.numpy as jnp
 import equinox as eqx
 
 from core.models import (
-    TangentBundle
+    TangentBundle_single_chart_atlas as TangentBundle
 )
 
 from core.template_psi_phi_g_functions_neural_networks import (

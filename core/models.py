@@ -1,5 +1,5 @@
 """
-The class TangentBundle contains the main geometric functionally of NGFs,
+The class TangentBundle_single_chart_atlas (formerly just TangentBundle) contains the main geometric functionally of NGFs,
 which are determined through the autoencoder psi, phi and the metric g.
 
 For the class to be modular each of these is passable at initialization,
@@ -15,7 +15,7 @@ import jax.numpy as jnp
 import equinox as eqx
 
 
-class TangentBundle(eqx.Module):
+class TangentBundle_single_chart_atlas(eqx.Module):
 
     #class representing the tangent bundle TM with options for hardcoded or learnable functions psi, phi, g.
 
@@ -32,6 +32,8 @@ class TangentBundle(eqx.Module):
     dim_dataspace : int
     dim_M : int
 
+    is_multi_chart : bool
+
     #upon changing arguments, also adapt get_high_level_parameters, always !
     def __init__(self, dim_dataspace, dim_M, psi , phi , g):
 
@@ -42,10 +44,13 @@ class TangentBundle(eqx.Module):
         self.phi = phi
         self.g = g
 
+        self.is_multi_chart = False
+
 
     #give all the high level parameters as a dictionary. this is used in applications/utils to load a saved instance
     def get_high_level_parameters(self):
         params = {
+            'is_multi_chart' : self.is_multi_chart,
             'dim_dataspace' : self.dim_dataspace,
             'dim_M': self.dim_M,
             'psi_neural_network_classname' : self.psi.classname,

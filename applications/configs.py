@@ -29,6 +29,7 @@ def get_wandb_config(train_dataset_name,
                      test_dataset_size = None, #if left as None it will load the whole dataset
                      optimizer_name = "adam", learning_rate = 1e-3, epochs = 100, loss_print_frequency = 10,
                      random_seed = 0,
+                     is_multi_chart = False, #later we will promote this to a mandatory argument!
                      continue_training = False,
                      updated_model_name = None,
                      save = True,
@@ -60,6 +61,8 @@ def get_wandb_config(train_dataset_name,
 
     config.random_seed = random_seed
 
+    config.is_multi_chart = is_multi_chart
+    
     config.continue_training = continue_training
 
     if updated_model_name is None and continue_training:

@@ -23,6 +23,7 @@ plt.rcParams.update({
     "savefig.dpi": 300,
     "savefig.format": "pdf",
     "savefig.bbox": "tight",
+    "axes3d.mouserotationstyle": "azel",
 })
 
 import matplotlib.cm as cm
@@ -44,7 +45,7 @@ from core.template_psi_phi_g_functions_neural_networks import (
 )
 
 from core.models import (
-    TangentBundle
+    TangentBundle_single_chart_atlas as TangentBundle
 )
 
 from core.inference import (

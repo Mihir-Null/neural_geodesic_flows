@@ -1,10 +1,11 @@
 """
-The classes defined here will later be moved to core.models
+The class TangentBundle_multi_chart_atlas is the main NGF model with a multi chart atlas.
+It's essence is a tuple "atlas" of Chart instances.
+It's logic is mainly chart switching and calling geometric methods from the currently active chart.
 
-The class TangetBundle_multi_chart_atlas is the new version of TangetBundle and is
-the main NGF model with a multi chart atlas. It's essence is a tuple "atlas" of
-Chart instances. It's logic is mainly chart switching and calling geometric methods
-from the currently active chart.
+The class TangentBundle_partition_of_unity_atlas is an unfinished experiment.
+
+When the workflow around TangentBundle_multi_chart_atlas is ready we will move it to core/models.py
 """
 
 import jax
@@ -17,12 +18,14 @@ from experimental.atlas import (
 )
 
 
-class TangetBundle_multi_chart_atlas(eqx.Module):
+class TangentBundle_multi_chart_atlas(eqx.Module):
 
     #tuple of Chart instances
     atlas : tuple
 
     amount_of_charts : int
+
+    is_multi_chart : bool
 
     def __init__(self, atlas):
 
@@ -30,6 +33,35 @@ class TangetBundle_multi_chart_atlas(eqx.Module):
 
         self.amount_of_charts = len(atlas)
 
+        self.is_multi_chart = True
+
+
+    #give all the high level parameters as a dictionary. this is used in applications/utils to load a saved instance
+    def get_high_level_parameters(self):
+
+        #we assume all charts have the exact same architecture
+        chart = self.atlas[0]
+
+        params = {
+            'is_multi_chart' : self.is_multi_chart,
+            'psi_neural_network_classname' : chart.psi.classname,
+            'phi_neural_network_classname' : chart.phi.classname,
+            'g_neural_network_classname' : chart.g.classname,
+            'psi_arguments': chart.psi.arguments,
+            'phi_arguments': chart.phi.arguments,
+            'g_arguments': chart.g.arguments
+            }
+
+        #collect coordinate domain shapes for each chart
+        domain_shapes = []
+
+        for chart in self.atlas:
+
+            domain_shapes.append(chart.coordinate_domain.get_high_level_parameters())
+
+        params['domain_shapes'] = domain_shapes  #list of dicts
+
+        return params
 
     #THIS METHOD IS NOT IN USE, WE ALWAYS USE THE MORE GENERAL ONE BELOW
     #apply a function in (or accossiated with) each chart (through the passed tuple of functions)
@@ -140,13 +172,9 @@ class TangetBundle_multi_chart_atlas(eqx.Module):
     #for an input in the dataspace find out which coordinate domain it belongs to and return its chart_id
     def determine_chart(self, y):
 
-        #this is currently implemented with the assumption that we are operating on a 2n dimensional data tangent bundle
-        #with coordinate domains on the non tangent part only.
         def distance_to_centroid(centroid, y):
 
-            n = y.shape[0]//2
-
-            return jnp.sum((y[:n] - centroid) ** 2)
+            return jnp.sum((y - centroid) ** 2)
 
         #find the distance to each coordinate domains centroid
         distances_all = jnp.stack([distance_to_centroid(chart.coordinate_domain.centroid, y) for chart in self.atlas])
@@ -155,7 +183,6 @@ class TangetBundle_multi_chart_atlas(eqx.Module):
         chart_id = jnp.argmin(distances_all)  # shape (), index of the smallest distance
 
         return chart_id
-
 
     #test if z should stay in the chart chart_id or if we need to switch to another
     #if so, return the (new chart_id, z) in the *new* chart
@@ -304,9 +331,22 @@ class TangetBundle_multi_chart_atlas(eqx.Module):
 
         return geodesic_states
 
+    #similar in purpose to exp_return_trajectory above, but here we take an initial y from the dataspace
+    #and return the whole geodesic trajectory in the dataspace
+    def get_geodesic(self, y, t, num_steps: int):
+
+        state = self.psi(y)
+
+        geodesic_states = self.exp_return_trajectory(state, t, num_steps)
+
+        geodesic_y = jax.vmap(self.phi, in_axes = 0)(geodesic_states)
+
+        #return the whole geodesic, shape (1 + num_steps, dim dataspace)
+        return geodesic_y
+
 
 #ONLY PARTIALLY IMPLEMENTED AND NOT USED AT THE MOMENT. I THINK IT WOULDN'T WORK EITHER
-class TangetBundle_partition_of_unity_atlas(eqx.Module):
+class TangentBundle_partition_of_unity_atlas(eqx.Module):
 
     #partition of unity function defined on the latent space reduced to M, so inputs are x in M, where z=(x,v) is a latent point in TM
     partition_of_unity : callable

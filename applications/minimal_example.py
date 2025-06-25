@@ -1,42 +1,27 @@
 """
-Application of neural geodesic flows:
+Minimal example of how to use neural geodesic flows:
 - initializes wandb session
 - setup of a training run
-- performs the training run (which saves the model if so specified)
-
-The specifics are meant to be adapted to run your different experiments.
+- perform the training run (which saves the model if so specified)
 """
 
 import wandb
 
 #get the relevant neural network classes to initialize phi,psi, g as
 from core.template_psi_phi_g_functions_neural_networks import (
-    identity_diffeomorphism,
-    NN_diffeomorphism,
-    NN_diffeomorphism_for_chart,
-    NN_split_diffeomorphism,
-    NN_linear_split_diffeomorphism,
     NN_Jacobian_split_diffeomorphism,
-    NN_Jacobian_split_diffeomorphism_for_chart,
-    NN_conv_diffeomorphism_for_chart,
-    NN_conv_diffeomorphism_for_parametrization,
-    identity_metric,
-    NN_metric,
-    NN_metric_regularized,
+    NN_metric
 )
 
 #get the relevant loss functions
 from core.losses import (
-    reconstruction_loss,
-    input_target_loss,
-    trajectory_reconstruction_loss,
-    trajectory_prediction_loss,
     trajectory_loss
 )
 
 #get the relevant utility methods
 from applications.utils import (
-    perform_training
+    perform_training,
+    perform_inference
 )
 
 #get the relevant methods to configure hyperparameters
@@ -58,7 +43,7 @@ wandb.init(project="Neural geodesic flows",
 
 config = get_wandb_config(train_dataset_name  = "half-sphere_trajectories_train",
                           test_dataset_name = "half-sphere_trajectories_test",
-                          model_name = "single-chart_half-sphere-model",
+                          model_name = "minimal-example_half-sphere-model",
                           dim_dataspace = 6,
                           dim_M = 2,
                           psi_arguments = {"in_size": 6,
@@ -69,11 +54,11 @@ config = get_wandb_config(train_dataset_name  = "half-sphere_trajectories_train"
                                            "hidden_sizes_x": [32, 32]},
                           g_arguments = {'dim_M':2,
                                          'hidden_sizes':[32,32]},
-                          batch_size = 512,
-                          #train_dataset_size = 512,
-                          test_dataset_size = 1024,
+                          batch_size = 64,
+                          train_dataset_size = 1024,
+                          test_dataset_size = 256,
                           learning_rate = 1e-3,
-                          epochs = 50, loss_print_frequency = 5,
+                          epochs = 20, loss_print_frequency = 1,
                           continue_training = False,
                           updated_model_name = "",
                           save = True)
@@ -85,8 +70,7 @@ config = get_wandb_config(train_dataset_name  = "half-sphere_trajectories_train"
 #if you forgot, the network class names are written in the model_name_high_level_params.json file (for this exact purpose)
 psi_initializer = NN_Jacobian_split_diffeomorphism
 phi_initializer = NN_Jacobian_split_diffeomorphism
-g_initializer = NN_metric_regularized
-
+g_initializer = NN_metric
 
 #make sure that the chosen loss functions match the used datasets
 #meaning they either take arguments & have keys
@@ -95,6 +79,9 @@ g_initializer = NN_metric_regularized
 train_loss_function = trajectory_loss
 test_loss_function = trajectory_loss
 
+#save these two variables for the inference call
+model_name = config.model_name
+dataset_name = config.test_dataset_name
 
 perform_training(config,
                 psi_initializer,
@@ -102,3 +89,10 @@ perform_training(config,
                 g_initializer,
                 train_loss_function,
                 test_loss_function)
+
+perform_inference(model_name,
+                  psi_initializer,
+                  phi_initializer,
+                  g_initializer,
+                  dataset_name,
+                  dataset_size = 1024)

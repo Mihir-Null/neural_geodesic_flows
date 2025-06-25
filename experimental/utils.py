@@ -1,11 +1,7 @@
 """
-Collection of auxiliarly methods:
+Collection of auxiliarly methods adapted for the multi chart NGFs:
 
-- to load datasets
-- to create dataloaders
-- to save & load models
-- to train a model with these methods for data/model management
-- to perform model inference with these methods for data/model management
+Once this here is in a satisfying state I will combine it into the applications/utils.py
 """
 
 import jax
@@ -24,7 +20,16 @@ import wandb
 import json
 
 from core.models import (
-    TangentBundle_single_chart_atlas as TangentBundle
+    TangentBundle_single_chart_atlas
+)
+
+from experimental.atlas import (
+    CoordinateDomain,
+    create_atlas
+)
+
+from experimental.models import (
+    TangentBundle_multi_chart_atlas
 )
 
 #load variables with the relevant paths
@@ -97,12 +102,11 @@ def load_dataset(name, size=None, random_selection=False, key=jax.random.PRNGKey
 
     return arrays, mode
 
-#create a dataloader for a dataset stored in PATH_DATASETS/dataset_name.
-def create_dataloader(dataset_name, batch_size, dataset_size=None, random_selection=False, key=jax.random.PRNGKey(0)):
+#create a dataloader for a dataset given as arrays
+def create_dataloader(dataset_arrays, batch_size):
 
     #convert jax arrays to pytorch tensors
-    arrays, mode = load_dataset(name=dataset_name, size=dataset_size, random_selection=random_selection, key=key)
-    tensors = tuple(torch.tensor(np.array(arr)) for arr in arrays)
+    tensors = tuple(torch.tensor(np.array(arr)) for arr in dataset_arrays)
 
     #account for potential case batch_size == None (test dataloaders might have this)
     if batch_size is None:
@@ -112,7 +116,7 @@ def create_dataloader(dataset_name, batch_size, dataset_size=None, random_select
     dataset = TensorDataset(*tensors)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    print(f"\nCreated DataLoader for dataset {dataset_name} of type '{mode}' with batch size {batch_size}\n")
+    print(f"\nCreated DataLoader with batch size {batch_size}\n")
 
     return dataloader
 
@@ -132,17 +136,48 @@ def load_model(model_name, psi_initializer, phi_initializer, g_initializer):
     with open(model_high_level_params_path, 'r') as f:
         model_high_level_params = json.load(f)
 
-    #initialize correct type neural networks (could also be hardcoded function, dependinging on the initializer)
-    psi_NN = psi_initializer(model_high_level_params['psi_arguments'])
+    multi_chart = model_high_level_params['multi_chart']        #needs to become model parameter
 
-    phi_NN = phi_initializer(model_high_level_params['phi_arguments'])
+    if not multi_chart:
 
-    g_NN = g_initializer(model_high_level_params['g_arguments'])
+        #initialize correct type neural networks (could also be hardcoded function, dependinging on the initializer)
+        psi_NN = psi_initializer(model_high_level_params['psi_arguments'])
 
-    #using the models high level parameters create an instance of the exact same form
-    model_prototype = TangentBundle(dim_dataspace = model_high_level_params['dim_dataspace'],
-                                    dim_M = model_high_level_params['dim_M'],
-                                    psi = psi_NN, phi = phi_NN, g = g_NN)
+        phi_NN = phi_initializer(model_high_level_params['phi_arguments'])
+
+        g_NN = g_initializer(model_high_level_params['g_arguments'])
+
+        #using the models high level parameters create an instance of the exact same form
+        model_prototype = TangentBundle_single_chart_atlas(dim_dataspace = model_high_level_params['dim_dataspace'],
+                                                           dim_M = model_high_level_params['dim_M'],
+                                                           psi = psi_NN, phi = phi_NN, g = g_NN)
+
+    elif multi_chart:
+
+        domains = ()
+
+        for domain_shape in model_high_level_params['domain_shapes']:
+
+            centroid = jnp.zeros(domain_shape['centroid_shape'])
+            interior_points = jnp.zeros(domain_shape['interior_points_shape'])
+            boundary_points = jnp.zeros(domain_shape['boundary_points_shape'])
+            boundary_new_chart_ids = jnp.zeros(domain_shape['boundary_new_chart_ids_shape'], dtype=jnp.int32)
+
+            domain = CoordinateDomain(centroid, interior_points, boundary_points, boundary_new_chart_ids)
+
+            domains = domains + (domain,)
+
+
+        atlas = create_atlas(domains = domains,
+                             psi_initializer = psi_initializer,
+                             phi_initializer = phi_initializer,
+                             g_initializer = g_initializer,
+                             psi_arguments = model_high_level_params['psi_arguments'],
+                             phi_arguments = model_high_level_params['phi_arguments'],
+                             g_arguments = model_high_level_params['g_arguments'],
+                             key = jax.random.PRNGKey(0))
+
+        model_prototype = TangentBundle_multi_chart_atlas(atlas = atlas)
 
     #initialize the saved model
     model = eqx.tree_deserialise_leaves(model_path, like = model_prototype)
@@ -191,55 +226,89 @@ def perform_training(config,
     #initialize top level random key, all others will be splits of this
     top_level_key = jax.random.PRNGKey(config.random_seed)
 
+
     ################################ load the problems dataset ################################
     key, key_train_loader, key_test_loader = jax.random.split(top_level_key, 3)
 
-    train_dataloader = create_dataloader(dataset_name = config.train_dataset_name,
-                                 batch_size = config.batch_size,
-                                 dataset_size = config.train_dataset_size,
-                                 random_selection = True,
-                                 key = key_train_loader)
+    train_dataset_arrays, _ = load_dataset(name = config.train_dataset_name,
+                                           size = config.train_dataset_size,
+                                           random_selection = True,
+                                           key = key_train_loader)
 
-    test_dataloader = create_dataloader(dataset_name = config.test_dataset_name,
-                                 batch_size = config.test_dataset_size,
-                                 dataset_size = config.test_dataset_size,
-                                 random_selection = True,
-                                 key = key_test_loader)
+    test_dataset_arrays, _ = load_dataset(name = config.test_dataset_name,
+                                          size = config.test_dataset_size,
+                                          random_selection = True,
+                                          key = key_test_loader)
+
+
+    ################################ create the data loaders ################################
+
+    #if we train on a single chart we can also create a single data loader
+    if not config.is_multi_chart:
+
+        train_dataloader = create_dataloader(dataset_arrays = train_dataset_arrays,
+                                             batch_size = config.batch_size)
+
+        test_dataloader = create_dataloader(dataset_arrays = test_dataset_arrays,
+                                            batch_size = config.test_dataset_size)
+
+    #if however we train multi chart we need to create datasets for each domain
+    #and create a data loader for each of these
+    else:
+        pass
 
 
     ################################ initialize a model ################################
+
+    #either load an existing model
     if config.continue_training:
 
         model = load_model(config.model_name,
                             psi_NN_initializer = psi_initializer,
                             phi_NN_initializer = phi_initializer,
                             g_NN_initializer = g_initializer)
+
+    #or initialize a new model,
     else:
 
-        key, key_psi, key_phi, key_g = jax.random.split(key, 4)
+        #either a single chart model
+        if not config.is_multi_chart:
 
-        psi_NN = psi_initializer(config.psi_arguments, key = key_psi)
+            key, key_psi, key_phi, key_g = jax.random.split(key, 4)
 
-        phi_NN = phi_initializer(config.phi_arguments, key = key_phi)
+            psi_NN = psi_initializer(config.psi_arguments, key = key_psi)
 
-        g_NN = g_initializer(config.g_arguments, key = key_g)
+            phi_NN = phi_initializer(config.phi_arguments, key = key_phi)
 
-        model = TangentBundle(dim_dataspace = config.dim_dataspace, dim_M = config.dim_M,
-                                psi = psi_NN, phi = phi_NN, g = g_NN)
+            g_NN = g_initializer(config.g_arguments, key = key_g)
 
+            model = TangentBundle_single_chart_atlas(dim_dataspace = config.dim_dataspace, dim_M = config.dim_M,
+                                                     psi = psi_NN, phi = phi_NN, g = g_NN)
+
+        #or a multi chart one
+        else:
+            pass
 
     ################################ train the model ################################
-    optimizer = get_optimizer(name = config.optimizer_name, learning_rate = config.learning_rate)
 
-    #train the model
-    model = train(model = model,
-                  train_loss_function = train_loss_function,
-                  test_loss_function = test_loss_function,
-                  train_dataloader = train_dataloader,
-                  test_dataloader = test_dataloader,
-                  optimizer = optimizer,
-                  epochs = config.epochs,
-                  loss_print_frequency = config.loss_print_frequency)
+    #single charted training is straight forward
+    if not config.is_multi_chart:
+
+        optimizer = get_optimizer(name = config.optimizer_name, learning_rate = config.learning_rate)
+
+        #train the model
+        model = train(model = model,
+                      train_loss_function = train_loss_function,
+                      test_loss_function = test_loss_function,
+                      train_dataloader = train_dataloader,
+                      test_dataloader = test_dataloader,
+                      optimizer = optimizer,
+                      epochs = config.epochs,
+                      loss_print_frequency = config.loss_print_frequency)
+
+    #multi charted training has to be carried out for each chart seperately
+    else:
+        pass
 
 
     ################################ save the model ################################
@@ -294,4 +363,4 @@ def perform_inference(model_name,
     elif mode =="trajectory":
         trajectory_model_analyis(model, trajectories, times)
 
-        trajectory_model_visualization(model, trajectories, times)
+        #trajectory_model_visualization(model, trajectories, times)

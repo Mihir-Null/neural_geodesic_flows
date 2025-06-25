@@ -1,5 +1,7 @@
 """
-Visualization methods for analytical geometry data
+Visualization methods for analytical geometry data.
+
+These are only tangentbundle variables of type TangentBundle_single_chart_atlas
 """
 
 import jax

@@ -23,6 +23,7 @@ plt.rcParams.update({
     "savefig.dpi": 300,
     "savefig.format": "pdf",
     "savefig.bbox": "tight",
+    "axes3d.mouserotationstyle": "azel",
 })
 
 import matplotlib.cm as cm

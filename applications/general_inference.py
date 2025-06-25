@@ -3,25 +3,9 @@ Run model analysis (inference) methods.
 
 Load a trained model and then run analysis functions,
 passing a testdataset.
+
+The specifics are meant to be adapted to run your different experiments.
 """
-
-#set a backend for interactive plotting
-import matplotlib
-matplotlib.use('QtAgg')
-
-#customize the figure default style and format
-import matplotlib.pyplot as plt
-plt.rcParams.update({
-    "font.family": "serif",
-    "axes.titlesize": 24,
-    "axes.labelsize": 18,
-    "xtick.labelsize": 18,
-    "ytick.labelsize": 18,
-    "legend.fontsize": 18,
-    "savefig.dpi": 300,
-    "savefig.format": "pdf",
-    "savefig.bbox": "tight",
-})
 
 #get the relevant neural network classes to initialize psi,phi, g as
 from core.template_psi_phi_g_functions_neural_networks import (
@@ -48,10 +32,10 @@ dataset_name = "half-sphere_trajectories_test"
 dataset_size = 1024
 
 #define a saved model (has to be one saved in data/models/)
-model_name = "half-sphere-quick"
+model_name = "single-chart_half-sphere-model"
 
-psi_initializer = NN_diffeomorphism
-phi_initializer = NN_diffeomorphism
+psi_initializer = NN_Jacobian_split_diffeomorphism
+phi_initializer = NN_Jacobian_split_diffeomorphism
 g_initializer = NN_metric_regularized
 
 #above assign the initializers of psi, phi and g that the model used,

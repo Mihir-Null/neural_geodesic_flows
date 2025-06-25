@@ -24,7 +24,7 @@ We want to learn to predict an evolution in time where a state $y$ at time $0$ e
 
 NGFs encode the data space to some latent tangent bundle $TM$ of a Riemannian manifold $(M,g)$. The encoded input $y$ becomes a latent location $x$ and velocity $v$ in $TM$. Then a geodesic evolution happens with $x$ as initial location and $v$ as initial velocity until time $t$. Thereby one arrives at the location and velocity $(\bar{x},\bar{v})$ which then get decoded back to the data space, yielding a prediction for $\bar{y}$.
 
-In the current implementation NGFs are realized through a class `TangetBundle` which has the following member variables:
+In the current implementation NGFs are realized through a class `TangentBundle_single_chart_atlas` which has the following member variables:
 ```
 dim_dataspace : int   #dimension of the dataspace
 dim_M : int           #dimension of the latent M
@@ -35,7 +35,7 @@ g : callable          #metric tensor on M, input shape (dim_M), output shape (di
 ```
 Those are all passed at initialization. Thereby `psi,phi,g` can either be some hard coded functions or any neural network (or any function really, so long as the input-output sizes are correct).
 
-The geodesic equation depends on partial derivatives of the metric tensor $g$ (which `TangentBundle` computes exactly using JAX autodifferentiation), so if `g` is initialized as a neural network it becomes a neural geodesic ODE.
+The geodesic equation depends on partial derivatives of the metric tensor $g$ (which `TangentBundle_single_chart_atlas` computes exactly using JAX autodifferentiation), so if `g` is initialized as a neural network it becomes a neural geodesic ODE.
 
 ### Properties of NGFs
 The theoretical properties of neural geodesic flows include
@@ -74,14 +74,14 @@ If you have a JAX compatible GPU it is much recommended to install the GPU versi
 
 ### Running a minimal example
 
-`python3 -m applications.general_training` will train and save a NGF model. By way of a quick example it is setup to train on a small two sphere dataset with few epochs (so don't expect great performance). The trained model can be analyzed with the module `applications/general_inference.py`. If you want to make this model good, increase the dataset size (the file contains 16384 samples) and amount of epochs in `applications/general_training.py`. Some more details on this model:
+`python3 -m applications.minimal` will train, save and visualize an NGF model. By way of a quick example it is setup to train on a small two sphere dataset with few epochs (so don't expect great performance). If you want to make this model good, increase the dataset size (the file contains 16384 samples), adjust the batch size and the amount of epochs. Once you've explored this a bit you might want to do training and inference separately, or craft your own experiments altogether. You can do so using the modules `applications/general_training.py` and `applications/general_inference.py`, see [Training your own model](#training-your-own-model) below. Some more details on this model:
  * The `.gif` animation above shows how this model trains when using the full dataset
  * The training data are a collection of (up to 16384) geodesic trajectories on the two sphere embedded in 3d consisting of positions (on the sphere) and velocities (tangent to the sphere), so that the data are mathematically 6 dimensional.
  * The model encodes a given 6 dimensional initial point of a trajectory to a 4 dimensional latent tangent bundle (2d manifold with 2d tangents) where it evolves it along a geodesic until time $t=1$. The metric is given by a neural network and so this evolution is learnt. The so obtained geodesic gets decoded into the 6d space.
  * In the inference the difference between the learnt and the given geodesics are analyzed.
  * In this special case, meant as a proof of concept, the data dynamics are themselves geodesic, but in general only the latent evolution is geodesic while the data dynamics are free to be of any kind (see the [master thesis](https://doi.org/10.3929/ethz-b-000733724) for exact assumptions). The goal is to learn any kind of dynamics through re-expressing them as latent geodesic dynamics. Thus in this simple example we demonstrate that NGFs in the easiest case, where the unknown dynamics are themselves geodesic, successfully solve this learning task.
 
-`applications/analytical_geometry` contains some modules that use the `TangetBundle` code to do computational differential geometry with example functions `psi,phi,g` (no learning involved). Run for instance
+`applications/analytical_geometry` contains some modules that use the `TangentBundle_single_chart_atlas` code to do computational differential geometry with example functions `psi,phi,g` (no learning involved). Run for instance
 ```
 python3 -m applications.analytical_geometry.two_torus_geodesics
 ```
@@ -109,13 +109,19 @@ Alternatively, if you want to use NGFs in your own setup, `core/` contains all e
 
 ## Reproducing the master thesis
 
-To reproduce the training or inference of the case studies from the thesis, find the relevant file in `applications/master_thesis/` and run it. For instance
+To reproduce the training or inference of the case studies from the thesis, first setup a new virtual environments with the exact versions of the libraries that were used during the thesis. This can be done with
+```bash
+python3 -m venv ngfs-thesis-env                             #create the environment
+source ngfs-thesis-env/bin/activate                         #activate the environment
+pip install -r applications/master_thesis/requirements.txt  #install all libraries
+```
+Then find the relevant file in `applications/master_thesis/` and run it. For instance
 ```
 python3 -m applications.master_thesis.two_body_problem_inference
 ```
 will produce the numerical and visual results of the two body problem case study as they are shown in the thesis. There are booleans in `toy_problem_inference.py` and `two_body_problem_inference.py` to decide which models are shown.
 
-Important: Make sure your environment meets the  additional requirements in `applications/master_thesis/additional_requirements.txt`. Furthermore, note that the results in the thesis were obtained by running the code with the following versions of the main libraries
+
 ```
 jax 0.4.33
 equinox 0.11.7
@@ -124,7 +130,7 @@ numpy 2.1.1
 scipy 1.14.1
 torch 2.5.1
 ```
-In later versions of JAX some of the architectural choices need to be changed in order to get convergent models (see the issue "Convergence in different JAX versions").
+
 
 ### Third-party code
 

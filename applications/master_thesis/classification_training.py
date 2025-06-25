@@ -9,7 +9,9 @@ import jax
 import wandb
 
 
-from core.models import TangentBundle
+from core.models import (
+    TangentBundle_single_chart_atlas as TangentBundle
+)
 
 from applications.configs import (
     get_optimizer

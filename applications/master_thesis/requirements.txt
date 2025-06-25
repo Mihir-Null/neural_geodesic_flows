@@ -1,0 +1,9 @@
+jax==0.4.33
+equinox==0.11.7
+optax==0.2.3
+numpy==2.1.1
+scipy==1.14.1
+torch==2.5.1
+imageio==2.36.1
+matplotlib==3.10.3
+wandb==0.18.5
