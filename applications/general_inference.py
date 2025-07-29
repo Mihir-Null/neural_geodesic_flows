@@ -36,7 +36,7 @@ model_name = "single-chart_half-sphere-model"
 
 psi_initializer = NN_Jacobian_split_diffeomorphism
 phi_initializer = NN_Jacobian_split_diffeomorphism
-g_initializer = NN_metric_regularized
+g_initializer = NN_metric
 
 #above assign the initializers of psi, phi and g that the model used,
 #their names are written in the model_name_high_level_params.json file

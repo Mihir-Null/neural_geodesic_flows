@@ -7,3 +7,4 @@ torch==2.5.1
 imageio==2.36.1
 matplotlib==3.10.3
 wandb==0.18.5
+PyQt6==6.9.1

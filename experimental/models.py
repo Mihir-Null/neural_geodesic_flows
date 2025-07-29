@@ -331,6 +331,7 @@ class TangentBundle_multi_chart_atlas(eqx.Module):
 
         return geodesic_states
 
+
     #similar in purpose to exp_return_trajectory above, but here we take an initial y from the dataspace
     #and return the whole geodesic trajectory in the dataspace
     def get_geodesic(self, y, t, num_steps: int):

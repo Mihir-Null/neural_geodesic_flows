@@ -56,6 +56,42 @@ class CoordinateDomain(eqx.Module):
 
         return params
 
+    #THIS IS NOT FEASIBLE (USES ENORMOUS AMOUNT OF MEMORY) UNLESS THE AMOUNT OF POINTS IS TINY
+    #given a point y check if it is in the domain
+    #(regardless of if in the interior or boundary part)
+    #this method is not canonical, i.e. we estimate the answer
+    def is_in_domain(self, y, distance_multiplier = 1.0):
+
+        ### check the maximal distance of any two points of our domain
+
+        #combine all known points of the domain
+        domain_points = jnp.concatenate([self.interior_points, self.boundary_points], axis=0)
+
+        #compute all pairwise distances (squared)
+        def squared_distance(a, b):
+            return jnp.sum((a - b) ** 2)
+
+        #vmap over all pairs
+        pairwise_dists = jax.vmap(
+            lambda x: jax.vmap(lambda y: squared_distance(x, y))(domain_points)
+        )(domain_points)
+
+        #maximum squared distance
+        max_dist = jnp.max(pairwise_dists)
+
+        ### find the minimal distance of y to any point of our domain
+
+        #compute the distance of y to any other (squared)
+        def distance_to_y(x):
+            return jnp.sum((x - y) ** 2)
+
+        y_dist = jnp.min(jax.vmap(distance_to_y)(domain_points))
+
+        ### decide whether y belongs to the domain
+        return y_dist <= distance_multiplier * max_dist
+
+
+
 #The main NGF model TangentBundle_multi_chart_atlas has as its core a tuple "atlas"
 #of Chart instances. These are all responsible for a certain coordinate domain
 class Chart(eqx.Module):
@@ -230,7 +266,15 @@ def create_coordinate_domains(dataset, amount_of_domains, extension_degree, is_t
                                                lower_boundary_points,
                                                lower_boundary_new_chart_ids)
 
-    return (upper_coordinate_domain, lower_coordinate_domain)
+    #for convenience we also return an array of shape (many, amount of domains)
+    #which for every point of dataset (many, mathdim) holds a 1 or 0 in the second axis
+    #depending on which domains it belongs to (each point belongs to at least one and at most every domain)
+    membership = jnp.zeros((dataset.shape[0], amount_of_domains))
+
+    membership = membership.at[:,0].set( mask_upper | mask_boundary_upper )
+    membership = membership.at[:,1].set( mask_lower | mask_boundary_lower )
+
+    return (upper_coordinate_domain, lower_coordinate_domain), membership
 
 
 #given a tuple of coordinate domains

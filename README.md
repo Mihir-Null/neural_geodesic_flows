@@ -2,7 +2,7 @@
 
 Neural geodesic flows (NGFs) are a scientific machine learning model that combines
 neural ODEs and computational differential geometry. [This master thesis](https://doi.org/10.3929/ethz-b-000733724),
-written by Julian Bürge, supervised through [Dr. Ben Moseley](https://github.com/benmoseley), explains them in detail.
+written by Julian Bürge, supervised through [Dr. Ben Moseley](https://github.com/benmoseley), explains them in detail. The project is featured in the [Scalable SciML lab of the Imperial college London](https://scalable-sciml-lab.org/projects/machine-learning-with-geodesic-flows/).
 
 <p align="center">
     <img src="images/training.gif" alt="Example of a NGF model predicting geodesic dynamics on a sphere." width=90%>
@@ -47,8 +47,8 @@ The theoretical properties of neural geodesic flows include
 * If $TM$ is modeled with a multi chart atlas they can extrapolate in time
 * The way the make predictions is interpretable
 
-### Future work
-Currently the latent tangent bundle gets encoded by a single function `psi` which in terms of differential geometry means it uses a single chart atlas. This greatly restricts the complexity of the domain of a dataspace evolution that this NGF implementation can learn. We therefore plan to add a multi chart encoder and decoder. [Floryan & Graham 2022](https://doi.org/10.1038/s42256-022-00575-4) have done this very successfully for a latent manifold with a flexible neural ODE (rather than a geodesic one). I have begun implementing a multi chart atlas ngf model, in `experimental/`.
+### Current work
+In the implementation produced during the master's thesis the latent tangent bundle gets encoded by a single function `psi` which in terms of differential geometry means it uses a single chart atlas. This greatly restricts the complexity of the domain of a dataspace evolution that this NGF implementation can learn. We are therefore working on a multi chart encoder and decoder. [Floryan & Graham 2022](https://doi.org/10.1038/s42256-022-00575-4) have done this very successfully for a latent manifold with a flexible neural ODE (rather than a geodesic one). Until this feature is fully developed it will stay in `experimental/`.
 
 ## Getting started
 
@@ -74,12 +74,12 @@ If you have a JAX compatible GPU it is much recommended to install the GPU versi
 
 ### Running a minimal example
 
-`python3 -m applications.minimal` will train, save and visualize an NGF model. By way of a quick example it is setup to train on a small two sphere dataset with few epochs (so don't expect great performance). If you want to make this model good, increase the dataset size (the file contains 16384 samples), adjust the batch size and the amount of epochs. Once you've explored this a bit you might want to do training and inference separately, or craft your own experiments altogether. You can do so using the modules `applications/general_training.py` and `applications/general_inference.py`, see [Training your own model](#training-your-own-model) below. Some more details on this model:
+`python3 -m applications.minimal_example` will train, save and visualize a NGF model. By way of a quick example it is set up to train on a small two sphere dataset with few epochs (so don't expect great performance). If you want to make this model good, increase the dataset size (the file contains 16384 samples), adjust the batch size and the amount of epochs. Once you've explored this a bit you might want to do training and inference separately, or craft your own experiments altogether. You can do so using the modules `applications/general_training.py` and `applications/general_inference.py`, see [Training your own model](#training-your-own-model) below. Some more details on this model:
  * The `.gif` animation above shows how this model trains when using the full dataset
  * The training data are a collection of (up to 16384) geodesic trajectories on the two sphere embedded in 3d consisting of positions (on the sphere) and velocities (tangent to the sphere), so that the data are mathematically 6 dimensional.
  * The model encodes a given 6 dimensional initial point of a trajectory to a 4 dimensional latent tangent bundle (2d manifold with 2d tangents) where it evolves it along a geodesic until time $t=1$. The metric is given by a neural network and so this evolution is learnt. The so obtained geodesic gets decoded into the 6d space.
  * In the inference the difference between the learnt and the given geodesics are analyzed.
- * In this special case, meant as a proof of concept, the data dynamics are themselves geodesic, but in general only the latent evolution is geodesic while the data dynamics are free to be of any kind (see the [master thesis](https://doi.org/10.3929/ethz-b-000733724) for exact assumptions). The goal is to learn any kind of dynamics through re-expressing them as latent geodesic dynamics. Thus in this simple example we demonstrate that NGFs in the easiest case, where the unknown dynamics are themselves geodesic, successfully solve this learning task.
+ * In this special case, meant as a proof of concept, the data dynamics are themselves geodesic, but in general only the latent evolution is geodesic while the data dynamics are free to be of any kind (see the [master thesis](https://doi.org/10.3929/ethz-b-000733724) for exact assumptions). The goal is to learn any kind of dynamics through re-expressing them as latent geodesic dynamics. Thus, in this simple example we demonstrate that NGFs in the easiest case, where the unknown dynamics are themselves geodesic, successfully solve this learning task.
 
 `applications/analytical_geometry` contains some modules that use the `TangentBundle_single_chart_atlas` code to do computational differential geometry with example functions `psi,phi,g` (no learning involved). Run for instance
 ```
@@ -93,7 +93,7 @@ Both modules
 applications/general_training.py
 applications/general_inference.py
 ```
-are setup to do training and inference on a general problem. They use `applications/configs.py` for hyperparameter management and `applications/utils.py` for data loading, model saving and performing the training runs. To run your own problem provide train and test datasets in `data/datasets` of the format
+are set up to do training and inference on a general problem. They use `applications/configs.py` for hyperparameter management and `applications/utils.py` for data loading, model saving and performing the training runs. To run your own problem provide train and test datasets in `data/datasets` of the format
 ```
 dataset.npz with keys 'inputs', 'targets', 'times'
 with shapes (many,dim_dataspace),(many,dim_dataspace) and (many,)
@@ -109,7 +109,7 @@ Alternatively, if you want to use NGFs in your own setup, `core/` contains all e
 
 ## Reproducing the master thesis
 
-To reproduce the training or inference of the case studies from the thesis, first setup a new virtual environments with the exact versions of the libraries that were used during the thesis. This can be done with
+To reproduce the training or inference of the case studies from the thesis, first set up a new virtual environments with the exact versions of the libraries that were used during the thesis. This can be done with
 ```bash
 python3 -m venv ngfs-thesis-env                             #create the environment
 source ngfs-thesis-env/bin/activate                         #activate the environment
@@ -122,19 +122,9 @@ python3 -m applications.master_thesis.two_body_problem_inference
 will produce the numerical and visual results of the two body problem case study as they are shown in the thesis. There are booleans in `toy_problem_inference.py` and `two_body_problem_inference.py` to decide which models are shown.
 
 
-```
-jax 0.4.33
-equinox 0.11.7
-optax 0.2.3
-numpy 2.1.1
-scipy 1.14.1
-torch 2.5.1
-```
-
-
 ### Third-party code
 
-In the master thesis we used a Hamiltonian neural network as a baseline for the two body problem. Therefore this repository includes modified code from the [Hamiltonian Neural Networks](https://github.com/greydanus/hamiltonian-nn) project, located in `applications/master_thesis/HNN/`.
+In the master thesis we used a Hamiltonian neural network as a baseline for the two body problem. Therefore, this repository includes modified code from the [Hamiltonian Neural Networks](https://github.com/greydanus/hamiltonian-nn) project, located in `applications/master_thesis/HNN/`.
 Their code is licensed under the Apache License 2.0 (see `hamiltonian-nn/LICENSE`).
 
 The model in `applications/master_thesis/HNN/trained_hnn.tar` was trained using their module `hamiltonian-nn/experiment-2body/train.py`.

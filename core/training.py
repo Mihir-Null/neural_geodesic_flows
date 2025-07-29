@@ -34,6 +34,7 @@ def update(model, loss_function, optimizer, opt_state, batch):
     return model, opt_state, loss
 
 
+
 def train(model,
           train_loss_function,
           test_loss_function,
@@ -45,7 +46,7 @@ def train(model,
 
     print(f"Starting training of {epochs} epochs")
 
-    #initalize optimizer state with current model parameters
+    #initialize optimizer state with current model parameters
     opt_state = optimizer.init(eqx.filter(model, eqx.is_inexact_array))
 
     #jit the test loss

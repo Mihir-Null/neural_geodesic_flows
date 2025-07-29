@@ -74,7 +74,6 @@ class TangentBundle_single_chart_atlas(eqx.Module):
     #at x in U return Gamma(x) of shape (m,m,m)
     #it is important to calculate the derivate/inverse afresh each call as g might have changed by some learning.
     def connection_coeffs(self, x):
-        m = self.dim_M
 
         #compute partial derivatives of g w.r.t x. shape (m,m,m) and after transposition partial_i g_ab stored at [i,a,b]
         G = lambda x : self.g(x)

@@ -4,7 +4,9 @@ Collection of auxiliarly methods adapted for the multi chart NGFs:
 Once this here is in a satisfying state I will combine it into the applications/utils.py
 """
 
+from chex import assert_equal
 import jax
+import jax.lax as lax
 import jax.numpy as jnp
 
 import optax
@@ -25,7 +27,8 @@ from core.models import (
 
 from experimental.atlas import (
     CoordinateDomain,
-    create_atlas
+    create_coordinate_domains,
+    create_atlas,
 )
 
 from experimental.models import (
@@ -102,7 +105,77 @@ def load_dataset(name, size=None, random_selection=False, key=jax.random.PRNGKey
 
     return arrays, mode
 
-#create a dataloader for a dataset given as arrays
+#THIS METHOD IS PAINFULLY SLOW. REWRITE! (in c++?)
+#expect to be given a tuple of arrays (trajectories, times) of shapes
+#(many, timepoints, mathim) and (many, timepoints)
+#and mebmerships of shape
+#(many, timepoints, amount of domains)
+#saying for each point if it belongs to the i-th domain (i-th component = 1) or not (i-th component = 0).
+#We then take the global trajectories and create domain specific constructed_trajectories for each domain,
+#which are padded with nans and constructed_times which are fully populated and start at 0.
+#We return a tuple of tuples, (constructed_trajectories, constructed_times) for each chart.
+def create_domain_specific_data_arrays(dataset_arrays, memberships):
+    all_trajectories, all_times = dataset_arrays
+    N, T, D = all_trajectories.shape
+    K = memberships.shape[-1]
+
+    def extract_segments(trajectory):
+        max_segs = T // 2
+        segments = jnp.full((max_segs, T, D), jnp.nan)
+
+        i = 0
+        seg_id = 0
+
+        while i < T - 1:
+            seg_traj = []
+
+            k = 0
+            while i + k < T and not jnp.isnan(trajectory[i + k, 0]):
+                seg_traj.append(trajectory[i + k])
+                k += 1
+
+            if seg_traj:
+                seg_arr = jnp.array(seg_traj)
+                segments = segments.at[seg_id, 0:k, :].set(seg_arr)
+                seg_id += 1
+
+            i += k + 1
+
+        return segments[:seg_id]  # only return filled segments
+
+    domain_specific_arrays = ()
+
+    for k in range(K):
+        domain_mask = memberships[..., k].astype(bool)[..., None]  # (N, T, 1)
+        domain_mask = jnp.broadcast_to(domain_mask, all_trajectories.shape)
+        masked_trajectories = jnp.where(domain_mask, all_trajectories, jnp.nan)
+
+        all_segments = []
+
+        for i in range(N):
+            segs = extract_segments(masked_trajectories[i])
+            all_segments.append(segs)
+
+        # flatten into (num_segs_total, T, D)
+        constructed_trajectories = jnp.concatenate(all_segments, axis=0)
+
+        # mask out invalid segments (e.g., fully NaN) — optional safety check
+        valid_mask = ~jnp.all(jnp.isnan(constructed_trajectories), axis=(1, 2))
+        constructed_trajectories = constructed_trajectories[valid_mask]
+
+        # create time arrays (starting from 0)
+        time = all_times[0]
+        constructed_times = jnp.tile(time, (constructed_trajectories.shape[0], 1))
+
+        domain_specific_arrays += ((constructed_trajectories, constructed_times),)
+
+    return domain_specific_arrays
+
+
+
+
+#create a dataloader for a dataset given as a tuple arrays = (array_0, ..., array_k)
+#expect axis 0 to be the batch dimension, i.e. array_i has shape (many, ...)
 def create_dataloader(dataset_arrays, batch_size):
 
     #convert jax arrays to pytorch tensors
@@ -136,9 +209,9 @@ def load_model(model_name, psi_initializer, phi_initializer, g_initializer):
     with open(model_high_level_params_path, 'r') as f:
         model_high_level_params = json.load(f)
 
-    multi_chart = model_high_level_params['multi_chart']        #needs to become model parameter
+    is_multi_chart = model_high_level_params['is_multi_chart']        #needs to become model parameter
 
-    if not multi_chart:
+    if not is_multi_chart:
 
         #initialize correct type neural networks (could also be hardcoded function, dependinging on the initializer)
         psi_NN = psi_initializer(model_high_level_params['psi_arguments'])
@@ -152,7 +225,7 @@ def load_model(model_name, psi_initializer, phi_initializer, g_initializer):
                                                            dim_M = model_high_level_params['dim_M'],
                                                            psi = psi_NN, phi = phi_NN, g = g_NN)
 
-    elif multi_chart:
+    elif is_multi_chart:
 
         domains = ()
 
@@ -215,6 +288,7 @@ def perform_training(config,
                     train_loss_function,
                     test_loss_function):
 
+
     #update the run name
     if config.continue_training:
         wandb.run.name = config.updated_model_name
@@ -230,49 +304,34 @@ def perform_training(config,
     ################################ load the problems dataset ################################
     key, key_train_loader, key_test_loader = jax.random.split(top_level_key, 3)
 
-    train_dataset_arrays, _ = load_dataset(name = config.train_dataset_name,
-                                           size = config.train_dataset_size,
-                                           random_selection = True,
-                                           key = key_train_loader)
+    train_dataset_arrays, train_dataset_mode = load_dataset(name = config.train_dataset_name,
+                                                            size = config.train_dataset_size,
+                                                            random_selection = True,
+                                                            key = key_train_loader)
 
-    test_dataset_arrays, _ = load_dataset(name = config.test_dataset_name,
-                                          size = config.test_dataset_size,
-                                          random_selection = True,
-                                          key = key_test_loader)
+    test_dataset_arrays, test_dataset_mode = load_dataset(name = config.test_dataset_name,
+                                                          size = config.test_dataset_size,
+                                                          random_selection = True,
+                                                          key = key_test_loader)
+
+    
+    assert_equal(train_dataset_mode, test_dataset_mode)
 
 
-    ################################ create the data loaders ################################
 
-    #if we train on a single chart we can also create a single data loader
+    ################################ single chart case ################################
     if not config.is_multi_chart:
 
-        train_dataloader = create_dataloader(dataset_arrays = train_dataset_arrays,
-                                             batch_size = config.batch_size)
+       
+        ########################### load or initialize a model #########################
+        if config.continue_training:
 
-        test_dataloader = create_dataloader(dataset_arrays = test_dataset_arrays,
-                                            batch_size = config.test_dataset_size)
-
-    #if however we train multi chart we need to create datasets for each domain
-    #and create a data loader for each of these
-    else:
-        pass
-
-
-    ################################ initialize a model ################################
-
-    #either load an existing model
-    if config.continue_training:
-
-        model = load_model(config.model_name,
-                            psi_NN_initializer = psi_initializer,
-                            phi_NN_initializer = phi_initializer,
-                            g_NN_initializer = g_initializer)
-
-    #or initialize a new model,
-    else:
-
-        #either a single chart model
-        if not config.is_multi_chart:
+            model = load_model(config.model_name, 
+                               psi_NN_initializer = psi_initializer,
+                               phi_NN_initializer = phi_initializer,
+                               g_NN_initializer = g_initializer)
+        
+        else:
 
             key, key_psi, key_phi, key_g = jax.random.split(key, 4)
 
@@ -285,14 +344,17 @@ def perform_training(config,
             model = TangentBundle_single_chart_atlas(dim_dataspace = config.dim_dataspace, dim_M = config.dim_M,
                                                      psi = psi_NN, phi = phi_NN, g = g_NN)
 
-        #or a multi chart one
-        else:
-            pass
+            
+        ########################### create the data loaders ############################
+        
+        train_dataloader = create_dataloader(dataset_arrays = train_dataset_arrays,
+                                             batch_size = config.batch_size)
 
-    ################################ train the model ################################
+        test_dataloader = create_dataloader(dataset_arrays = test_dataset_arrays,
+                                            batch_size = config.test_dataset_size)
 
-    #single charted training is straight forward
-    if not config.is_multi_chart:
+
+        ########################### perform the training ###############################
 
         optimizer = get_optimizer(name = config.optimizer_name, learning_rate = config.learning_rate)
 
@@ -306,9 +368,121 @@ def perform_training(config,
                       epochs = config.epochs,
                       loss_print_frequency = config.loss_print_frequency)
 
-    #multi charted training has to be carried out for each chart seperately
+
+        
+
+
+    ################################ multi chart case ##################################
     else:
-        pass
+
+        ########################### prepare by obtaining domains and memberships #######
+        if not train_dataset_mode == 'trajectory':
+
+            raise ValueError("Multi chart training is only supported for data of mode 'trajectory'")
+        
+        #assume thus that the data or mode 'trajectory', extract trajectories while ignoring the times
+        train_trajectories, _ = train_dataset_arrays
+        test_trajectories, _ = test_dataset_arrays
+
+        #obtain an array with all points from all trajectories
+        train_datamanifold = train_trajectories.reshape(-1, train_trajectories.shape[-1])  # shape (many*time points, math dim)
+        test_datamanifold = test_trajectories.reshape(-1, test_trajectories.shape[-1])  # shape (many*time points, math dim)
+
+
+        #we split the data manifold into domains, which is a tuple of elements of type CoordinateDomain
+        #memberships are shape (many,amount of domains) where many = datamanifold.shape[0] = amount of trajectories * timepoints
+        train_domains, train_memberships = create_coordinate_domains(train_datamanifold,
+                                                                     amount_of_domains = 2,      #promote to hyper parameter!
+                                                                     extension_degree = 0,       #promote to hyper parameter!
+                                                                     is_tangent_bundle = True)   #promote to hyper parameter!
+
+        test_domains, test_memberships = create_coordinate_domains(test_datamanifold,
+                                                                   amount_of_domains = 2,
+                                                                   extension_degree = 0,
+                                                                   is_tangent_bundle = True)
+
+
+        #reshape the memberships to (many, timepoints, amount of charts), so that it works with trajectories of shape (many, timepoints, mathdim)
+        train_memberships = train_memberships.reshape(train_trajectories.shape[0], train_trajectories.shape[1], train_memberships.shape[1])
+        test_memberships = test_memberships.reshape(test_trajectories.shape[0], test_trajectories.shape[1], test_memberships.shape[1])
+
+
+        ########################### load or initialize a model #########################
+        if config.continue_training:
+
+            model = load_model(config.model_name,
+                               psi_NN_initializer = psi_initializer,
+                               phi_NN_initializer = phi_initializer,
+                               g_NN_initializer = g_initializer)
+       
+        else:
+       
+            key, key_atlas = jax.random.split(key, 2)
+
+            #we assign an instance of Chart to each of the domains. All charts have the same psi,phi,g architecture.
+            #this yields a tuple of Charts called atlas.
+            atlas = create_atlas(domains = train_domains,
+                                 psi_initializer = psi_initializer,
+                                 phi_initializer = phi_initializer,
+                                 g_initializer = g_initializer,
+                                 psi_arguments = config.psi_arguments,
+                                 phi_arguments = config.phi_arguments,
+                                 g_arguments = config.g_arguments,
+                                 key = key_atlas)
+
+            model = TangentBundle_multi_chart_atlas(atlas = atlas)
+
+
+        ########################### create the data loaders ############################
+        
+        #create a tuple of dataset arrays, one for each domain of the model, like so
+        #tuple = ( (trajectories_1, times_1), ..., (trajectories_k, times_k)
+        train_domain_specific_dataset_arrays = create_domain_specific_data_arrays(train_dataset_arrays, train_memberships)
+        test_domain_specific_dataset_arrays = create_domain_specific_data_arrays(test_dataset_arrays, test_memberships)
+
+        #create a tuple of train dataloaders
+        train_dataloaders = ()
+
+        for dataset_arrays in train_domain_specific_dataset_arrays:
+
+            train_dataloader = create_dataloader(dataset_arrays = dataset_arrays,
+                                                 batch_size = config.batch_size)
+
+            train_dataloaders += (train_dataloader,)
+
+        #create a tuple of test dataloaders
+        test_dataloaders = ()
+
+        for dataset_arrays in test_domain_specific_dataset_arrays:
+
+            test_dataloader = create_dataloader(dataset_arrays = dataset_arrays,
+                                                batch_size = config.test_dataset_size)
+
+            test_dataloaders += (test_dataloader,)
+
+
+        ########################### perform the training ###############################
+        trained_atlas = ()
+
+        for i, chart in enumerate(model.atlas):
+
+            print(f"\n### Now training chart {i} of {len(model.atlas)-1} ###\n")
+
+            optimizer = get_optimizer(name = config.optimizer_name, learning_rate = config.learning_rate)
+
+            #train the model
+            trained_chart = train(model = chart,
+                                  train_loss_function = train_loss_function,
+                                  test_loss_function = test_loss_function,
+                                  train_dataloader = train_dataloaders[i],
+                                  test_dataloader = test_dataloaders[i],
+                                  optimizer = optimizer,
+                                  epochs = config.epochs,
+                                  loss_print_frequency = config.loss_print_frequency)
+
+            trained_atlas += (trained_chart,)
+
+        model = TangentBundle_multi_chart_atlas(atlas = trained_atlas)
 
 
     ################################ save the model ################################

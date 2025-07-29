@@ -21,10 +21,13 @@ from core.template_psi_phi_g_functions_analytical import (
 
 from core.template_psi_phi_g_functions_neural_networks import (
     identity_metric,
+    NN_Jacobian_split_diffeomorphism,
+    NN_metric
 )
 
-from applications.utils import (
+from experimental.utils import (
     load_dataset,
+    load_model,
 )
 
 from experimental.inference import (
@@ -41,6 +44,7 @@ from experimental.models import (
     TangentBundle_multi_chart_atlas as TangentBundle,
 )
 
+
 ### load the sphere data ###
 size = 512
 data, _ = load_dataset(name = "sphere_trajectories_train", size = size)
@@ -51,6 +55,7 @@ trajectories, times = data
 
 #extract and flatten positions (x, y, z)
 sphere = trajectories.reshape(-1, 6)  # shape (size*time, 6)
+
 
 #apply masks to get coordinate domains
 extended_upper_hemisphere, extended_lower_hemisphere = create_coordinate_domains(sphere,
@@ -85,6 +90,7 @@ sphere_atlas = (chart_upper_hemisphere, chart_lower_hemisphere)
 ### build a spherebundle and test global dynamics ###
 sphere_bundle = TangentBundle(atlas = sphere_atlas)
 
+
 """
 #define a saved model (has to be one saved in data/models/)
 model_name = "multi-chart_sphere-model"
@@ -94,9 +100,9 @@ phi_initializer = NN_Jacobian_split_diffeomorphism
 g_initializer = NN_metric
 
 sphere_bundle = load_model(model_name,
-                   psi_initializer = psi_initializer,
-                   phi_initializer = phi_initializer,
-                   g_initializer = g_initializer)
+                           psi_initializer = psi_initializer,
+                           phi_initializer = phi_initializer,
+                           g_initializer = g_initializer)
 """
 
 #initial point in the chart (consists of initial theta, phi, v^theta, v^phi)

@@ -9,9 +9,23 @@ import jax.numpy as jnp
 #namely, in the multi chart approach latent points are tuples (chart_id, z), in the single chart they are arrays z
 #we check which one it is at trace time using this auxiliary method
 #(so that it does not re-check every call, but just once at trace time)
-def is_multi_chart(tangentbundle):
+def is_multi_chart(latent):
 
-    return tangentbundle.is_multi_chart
+    return isinstance(latent, tuple) and len(latent) == 2
+
+#in case the data are nan someplaces (for instance if there is padding)
+#filter them out and apply MSE afterwards
+def filter_out_nan_padding_MSE(data, predictions):
+
+    valid_mask = ~jnp.isnan(data)
+
+    count_valid = jnp.sum(valid_mask)
+
+    square_error = jnp.where(valid_mask, (data - predictions)**2, 0.0)
+
+    mse = jnp.sum(square_error) / count_valid
+
+    return mse
 
 #expect data of shape (batch_size, mathematical dimension), (batch_size,mathematical dimension), (batch_size)
 def reconstruction_loss(tangentbundle, inputs, targets, times):
@@ -56,7 +70,7 @@ def input_target_loss(tangentbundle, inputs, targets, times):
     predictive_error = jnp.mean((predictions - targets)**2)
 
     #measure the MSE of the predicted versus the target in latent space
-    if is_multi_chart(tangentbundle):
+    if is_multi_chart(latent_predictions):
 
         _, z_pred = latent_predictions
         _, z_targ = latent_targets
@@ -87,7 +101,9 @@ def trajectory_reconstruction_loss(tangentbundle, trajectories, times):
     reconstructions = decode_many_trajectories(encode_many_trajectories(trajectories))
 
     #measure the quality of the reconstruction
-    reconstructive_error = jnp.mean((reconstructions - trajectories)**2)
+    #reconstructive_error = jnp.mean((reconstructions - trajectories)**2)
+
+    reconstructive_error = filter_out_nan_padding_MSE(trajectories, reconstructions)
 
     #loss
     return reconstructive_error
@@ -100,6 +116,7 @@ def trajectory_prediction_loss(tangentbundle, trajectories, times):
     final_times = times[:,-1]
     num_steps = times.shape[1] - 1 #time steps = num_steps + 1 (the first time step will be the initial and for each num step we go forward by one step)
 
+
     #vectorize the functions from the tangentbundle.
 
     #expect to be given a trajectory (num_steps + 1, math dim)
@@ -110,7 +127,7 @@ def trajectory_prediction_loss(tangentbundle, trajectories, times):
     #expect to be given a batch of initial points (many, math dim)
     encode_initial = jax.vmap(tangentbundle.psi, in_axes = 0)
 
-    #expect to be given a batch of encoded initial points (many, math dim)
+    #expect to be given a batch of encoded initial points (many, math dim) as well as final_times (many,)
     find_geodesic = jax.vmap(tangentbundle.exp_return_trajectory, in_axes = (0,0,None))
 
     #expect to be given a geodesic (num steps + 1, math dim)
@@ -135,19 +152,22 @@ def trajectory_prediction_loss(tangentbundle, trajectories, times):
     decoded_geodesics = decode_many_geodesics(geodesics)
 
     #measure the deviation of the predicted versus the given trajectory in latent space
-    if is_multi_chart(tangentbundle):
+    if is_multi_chart(geodesics):
 
         _, z_geodesics = geodesics
         _, z_encoded_trajectories = encoded_trajectories
 
-        predictive_error_latentspace = jnp.mean((z_encoded_trajectories - z_geodesics)**2)
+        #predictive_error_latentspace = jnp.mean((z_encoded_trajectories - z_geodesics)**2)
+        predictive_error_latentspace = filter_out_nan_padding_MSE(z_encoded_trajectories, z_geodesics)
 
     else:
 
-        predictive_error_latentspace = jnp.mean((encoded_trajectories - geodesics)**2)
+        #predictive_error_latentspace = jnp.mean((encoded_trajectories - geodesics)**2)
+        predictive_error_latentspace = filter_out_nan_padding_MSE(encoded_trajectories, geodesics)
 
     #measure the deviation of the predicted versus the given trajectory in dataspace
-    predictive_error_dataspace = jnp.mean((trajectories - decoded_geodesics)**2)
+    #predictive_error_dataspace = jnp.mean((trajectories - decoded_geodesics)**2)
+    predictive_error_dataspace = filter_out_nan_padding_MSE(trajectories, decoded_geodesics)
 
     return predictive_error_dataspace + predictive_error_latentspace
 
