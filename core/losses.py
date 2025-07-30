@@ -13,21 +13,8 @@ def is_multi_chart(latent):
 
     return isinstance(latent, tuple) and len(latent) == 2
 
-#in case the data are nan someplaces (for instance if there is padding)
-#filter them out and apply MSE afterwards
-def filter_out_nan_padding_MSE(data, predictions):
-
-    valid_mask = ~jnp.isnan(data)
-
-    count_valid = jnp.sum(valid_mask)
-
-    square_error = jnp.where(valid_mask, (data - predictions)**2, 0.0)
-
-    mse = jnp.sum(square_error) / count_valid
-
-    return mse
-
-#filters out NaN paddings and stops their gradients
+#in the multi chart training the data trajectories are padded with NaNs.
+#this means square error method filters out NaN paddings and stops their gradients
 def safe_filtered_MSE(data, predictions):
     
     #we will filter out and stop gradients of any NaNs in the data (suppossedly NaN paddings)

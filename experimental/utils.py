@@ -55,6 +55,7 @@ from core.inference import (
 )
 
 
+
 #load a dataset stored in PATH_DATASETS/name.npz and return it as tuple of jax arrays.
 #Optionally shrink the size by random selection or truncation.
 #also return a string mode = 'input-target' or 'trajectory' to know what format the data has
@@ -209,7 +210,7 @@ def load_model(model_name, psi_initializer, phi_initializer, g_initializer):
     with open(model_high_level_params_path, 'r') as f:
         model_high_level_params = json.load(f)
 
-    is_multi_chart = model_high_level_params['is_multi_chart']        #needs to become model parameter
+    is_multi_chart = model_high_level_params['is_multi_chart']
 
     if not is_multi_chart:
 
@@ -327,9 +328,9 @@ def perform_training(config,
         if config.continue_training:
 
             model = load_model(config.model_name, 
-                               psi_NN_initializer = psi_initializer,
-                               phi_NN_initializer = phi_initializer,
-                               g_NN_initializer = g_initializer)
+                               psi_initializer = psi_initializer,
+                               phi_initializer = phi_initializer,
+                               g_initializer = g_initializer)
         
         else:
 
@@ -411,9 +412,9 @@ def perform_training(config,
         if config.continue_training:
 
             model = load_model(config.model_name,
-                               psi_NN_initializer = psi_initializer,
-                               phi_NN_initializer = phi_initializer,
-                               g_NN_initializer = g_initializer)
+                               psi_initializer = psi_initializer,
+                               phi_initializer = phi_initializer,
+                               g_initializer = g_initializer)
        
         else:
        
@@ -536,5 +537,3 @@ def perform_inference(model_name,
 
     elif mode =="trajectory":
         trajectory_model_analyis(model, trajectories, times)
-
-        #trajectory_model_visualization(model, trajectories, times)

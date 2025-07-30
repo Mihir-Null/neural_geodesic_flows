@@ -10,7 +10,10 @@ We use three different formats of the data:
 - trajectories & times,       expected to be of shape (many, trajectory points, mathdim) & (many, trajectory points)
 - points,                     expected to be of shape (many, mathdim)
 
-visual methods are to be implemented still (there we will use find_indices)
+There is only one visual methods currently implemented.
+It'd be good to generalize it, so that it works out of the box for multi/single chart,
+dataspaces that are themselves tanget bundles or not, and
+any data and latent dimensions.
 """
 
 import jax

@@ -57,7 +57,7 @@ wandb.init(project="Neural geodesic flows",
 
 config = get_wandb_config(train_dataset_name  = "sphere_trajectories_train",
                           test_dataset_name = "sphere_trajectories_test",
-                          model_name = "sphere_autoencoder",
+                          model_name = "sphere_model",
                           dim_dataspace = 6,
                           dim_M = 2,
                           psi_arguments = {"in_size": 6,
@@ -69,10 +69,10 @@ config = get_wandb_config(train_dataset_name  = "sphere_trajectories_train",
                           g_arguments = {'dim_M':2,
                                          'hidden_sizes':[32,32]},
                           batch_size = 512,
-                          train_dataset_size = 16384,
+                          train_dataset_size = 1024,
                           test_dataset_size = 64,
                           learning_rate = 1e-3,
-                          epochs = 100, loss_print_frequency = 25,
+                          epochs = 100, loss_print_frequency = 10,
                           is_multi_chart = True,
                           continue_training = False,
                           updated_model_name = "",
@@ -92,8 +92,8 @@ g_initializer = NN_metric
 #meaning they either take arguments & have keys
 #inputs, targets, times
 #or trajectories, times.
-train_loss_function = trajectory_reconstruction_loss
-test_loss_function = trajectory_reconstruction_loss
+train_loss_function = trajectory_loss
+test_loss_function = trajectory_loss
 
 
 perform_training(config,

@@ -32,7 +32,7 @@ dataset_name = "half-sphere_trajectories_test"
 dataset_size = 1024
 
 #define a saved model (has to be one saved in data/models/)
-model_name = "single-chart_half-sphere-model"
+model_name = "half-sphere_model"
 
 psi_initializer = NN_Jacobian_split_diffeomorphism
 phi_initializer = NN_Jacobian_split_diffeomorphism
