@@ -449,7 +449,7 @@ def perform_training(config,
                                                  batch_size = config.batch_size)
 
             train_dataloaders += (train_dataloader,)
-
+            
         #create a tuple of test dataloaders
         test_dataloaders = ()
 

@@ -52,7 +52,6 @@ data, _ = load_dataset(name = "sphere_trajectories_train", size = size)
 
 trajectories, times = data
 
-
 """
 ### create 2 coordinate domains ###
 
@@ -111,8 +110,18 @@ sphere_bundle = load_model(model_name,
                            g_initializer = g_initializer)
 
 
-#initial point
-initial_point = trajectories[20,0,:]
+#initial point in the chart (consists of initial theta, phi, v^theta, v^phi)
+chart_id = 0
+
+chart = sphere_bundle.atlas[chart_id]
+
+initial_data_point = trajectories[0,0,:]
+
+initial_point = chart.psi(initial_data_point)
+
+
+initial_state = (chart_id, initial_point)
+
 
 #integration time
 t = 8
@@ -123,4 +132,4 @@ steps = 250
 #visualize the geodesic in data space and in the charts
 sphere = parametrized_surface(parametrization_S2_spherical, chartdomain_S2_spherical)
 
-full_dynamics_visualization(sphere_bundle, initial_point, t = t, steps = steps, surface = sphere)
+full_dynamics_visualization(sphere_bundle, initial_state, t = t, steps = steps, surface = sphere)

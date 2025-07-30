@@ -27,6 +27,49 @@ def filter_out_nan_padding_MSE(data, predictions):
 
     return mse
 
+#filters out NaN paddings and stops their gradients
+def safe_filtered_MSE(data, predictions):
+    
+    #we will filter out and stop gradients of any NaNs in the data (suppossedly NaN paddings)
+    valid_mask = ~jnp.isnan(data)
+    
+    count_valid = jnp.sum(valid_mask)
+    
+    #find the difference
+    diff = data - predictions
+    
+    #stop gradients in NaN paddings
+    diff = jnp.where(valid_mask, diff, jax.lax.stop_gradient(diff))
+    
+    #build the square error filtering out the NaN paddings
+    square_error = jnp.where(valid_mask, diff**2, 0.0)
+    
+    #find the MSE
+    mse = jnp.sum(square_error) / count_valid   
+
+    return mse
+
+#this method applies the function to a point safely:
+#if it's non nan, it just applies it
+#if it's nan, it returns the point itself (so nan) (so that it can later be filtered out since evidently it belongs to the padding area)
+#but stops the gradient, so that the model call on a nan value won't ruin the gradients (it otherwise would)
+def safe_function_apply(function, point):
+
+    is_valid = ~jnp.isnan(point).any()
+
+    def do_model(point):       
+            
+        return function(point)
+
+    def skip_model(point):
+
+        #returns the point unchanged, and no gradients!
+        return jax.lax.stop_gradient(function(point))
+
+    output = jax.lax.cond(is_valid, do_model, skip_model, point)
+        
+    return output
+
 #expect data of shape (batch_size, mathematical dimension), (batch_size,mathematical dimension), (batch_size)
 def reconstruction_loss(tangentbundle, inputs, targets, times):
 
@@ -90,20 +133,19 @@ def input_target_loss(tangentbundle, inputs, targets, times):
 #expect data of shape (batch_size, time steps, mathematical dimension), (batch_size,time steps)
 def trajectory_reconstruction_loss(tangentbundle, trajectories, times):
 
-    #vectorize the functions from the tangentbundle
-    encode_trajectory = jax.vmap(tangentbundle.psi, in_axes = 0)
-    decode_trajectory = jax.vmap(tangentbundle.phi, in_axes = 0)
+    #build and vectorize the functions from the autoencoder
+    autoencode = lambda point : tangentbundle.phi(tangentbundle.psi(point))
+    safe_autoencode = lambda point : safe_function_apply(autoencode, point)
 
-    encode_many_trajectories = jax.vmap(encode_trajectory, in_axes = 0)
-    decode_many_trajectories = jax.vmap(decode_trajectory, in_axes = 0)
+    autoencode_points = jax.vmap(safe_autoencode, in_axes = 0)
+
+    #reshape to points (batch_size*time steps, math dim)
+    points = trajectories.reshape(-1, trajectories.shape[-1])
 
     #generate reconstructions
-    reconstructions = decode_many_trajectories(encode_many_trajectories(trajectories))
+    reconstructions = autoencode_points(points)
 
-    #measure the quality of the reconstruction
-    #reconstructive_error = jnp.mean((reconstructions - trajectories)**2)
-
-    reconstructive_error = filter_out_nan_padding_MSE(trajectories, reconstructions)
+    reconstructive_error = safe_filtered_MSE(points, reconstructions)
 
     #loss
     return reconstructive_error
@@ -117,23 +159,32 @@ def trajectory_prediction_loss(tangentbundle, trajectories, times):
     num_steps = times.shape[1] - 1 #time steps = num_steps + 1 (the first time step will be the initial and for each num step we go forward by one step)
 
 
-    #vectorize the functions from the tangentbundle.
+    #vectorize the encoder
+    safe_encode = lambda point : safe_function_apply(tangentbundle.psi, point)
 
     #expect to be given a trajectory (num_steps + 1, math dim)
-    encode_trajectory = jax.vmap(tangentbundle.psi, in_axes = 0)
+    encode_trajectory = jax.vmap(safe_encode, in_axes = 0)
     #expect to be given a batch of trajectories (many, num steps + 1, math dim)
     encode_many_trajectories = jax.vmap(encode_trajectory, in_axes = 0)
 
-    #expect to be given a batch of initial points (many, math dim)
+    
+
+    #vectorize the decoder. Will only be applied to generated geodesic (so no nans)
+    
+    #expect to be given a geodesic (num steps + 1, math dim)
+    decode_geodesic = jax.vmap(tangentbundle.phi, in_axes = 0)
+    #expect to be given a batch of geodesics (many, num steps +1 , math dim)
+    decode_many_geodesics = jax.vmap(decode_geodesic, in_axes = 0)
+
+    #vectorize the geodesic solve
+
+    #expect to be given a batch of initial points (many, math dim). Initial points must never be NaN
     encode_initial = jax.vmap(tangentbundle.psi, in_axes = 0)
 
     #expect to be given a batch of encoded initial points (many, math dim) as well as final_times (many,)
     find_geodesic = jax.vmap(tangentbundle.exp_return_trajectory, in_axes = (0,0,None))
 
-    #expect to be given a geodesic (num steps + 1, math dim)
-    decode_geodesic = jax.vmap(tangentbundle.phi, in_axes = 0)
-    #expect to be given a batch of geodesics (many, num steps +1 , math dim)
-    decode_many_geodesics = jax.vmap(decode_geodesic, in_axes = 0)
+
 
 
     #generate the predicted trajectories (which are geodesics) and match them
@@ -147,29 +198,27 @@ def trajectory_prediction_loss(tangentbundle, trajectories, times):
 
     #find all the corresponding geodesics, get shape (many, num steps +1, math dim)
     geodesics = find_geodesic(encoded_initial_points, final_times, num_steps)
-
+    
     #decode all the geodesics, get shape (many, num_steps + 1, math dim)
     decoded_geodesics = decode_many_geodesics(geodesics)
-
+    
+    
     #measure the deviation of the predicted versus the given trajectory in latent space
     if is_multi_chart(geodesics):
-
         _, z_geodesics = geodesics
         _, z_encoded_trajectories = encoded_trajectories
 
-        #predictive_error_latentspace = jnp.mean((z_encoded_trajectories - z_geodesics)**2)
-        predictive_error_latentspace = filter_out_nan_padding_MSE(z_encoded_trajectories, z_geodesics)
+        predictive_error_latentspace = safe_filtered_MSE(z_encoded_trajectories, z_geodesics)
 
     else:
 
-        #predictive_error_latentspace = jnp.mean((encoded_trajectories - geodesics)**2)
-        predictive_error_latentspace = filter_out_nan_padding_MSE(encoded_trajectories, geodesics)
-
+        predictive_error_latentspace = safe_filtered_MSE(encoded_trajectories, geodesics)
+    
     #measure the deviation of the predicted versus the given trajectory in dataspace
-    #predictive_error_dataspace = jnp.mean((trajectories - decoded_geodesics)**2)
-    predictive_error_dataspace = filter_out_nan_padding_MSE(trajectories, decoded_geodesics)
+    predictive_error_dataspace = safe_filtered_MSE(trajectories, decoded_geodesics)
 
     return predictive_error_dataspace + predictive_error_latentspace
+
 
 def trajectory_loss(tangentbundle, trajectories, times):
 

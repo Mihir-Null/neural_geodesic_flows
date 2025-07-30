@@ -66,8 +66,12 @@ def full_dynamics_visualization(tangent_bundle,
                                  steps,
                                  surface):  # surface = (x_grid, y_grid, z_grid)
 
+
+    #encode the initial_state
+    initial_latent = tangent_bundle.psi(initial_state)
+
     #integration, in the chart, yielding a tuple (chart_ids, z_values)
-    chart_geodesic = tangent_bundle.exp_return_trajectory(initial_state, t, steps)
+    chart_geodesic = tangent_bundle.exp_return_trajectory(initial_latent, t, steps)
 
     #embed the integrated curve into data space, this is now an array of shape (steps+1, 6) (x,y,z,vx,vy,vz)
     geodesic = jax.vmap(tangent_bundle.phi, in_axes = 0)(chart_geodesic)

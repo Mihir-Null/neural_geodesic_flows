@@ -147,4 +147,4 @@ If you find Neural geodesic flows useful and use them in your own work, please u
 ```
 
 ### Author
-This project is maintained by Julian Bürge. For any questions or comments you can reach them at `juliandominikbuerge@gmail.com`.
+This project is maintained by Julian Bürge. For any questions or comments you can open an issue or reach them at `julian.buerge@alumni.ethz.ch`.
