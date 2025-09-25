@@ -55,14 +55,14 @@ extended_upper_hemisphere, extended_lower_hemisphere = domains[0], domains[1]
 
 #initialize Chart instances for the two domains
 chart_upper_hemisphere = Chart(coordinate_domain = extended_upper_hemisphere,
-                               psi = psi_S2_inverted_stereographic,
-                               phi = phi_S2_inverted_stereographic,
-                               g = g_S2_stereographic)
+                               psi = psi_S2_inverted_stereographic({}),
+                               phi = phi_S2_inverted_stereographic({}),
+                               g = g_S2_stereographic({}))
 
 chart_lower_hemisphere = Chart(coordinate_domain = extended_lower_hemisphere,
-                               psi = psi_S2_stereographic,
-                               phi = phi_S2_stereographic,
-                               g = g_S2_stereographic)
+                               psi = psi_S2_stereographic({}),
+                               phi = phi_S2_stereographic({}),
+                               g = g_S2_stereographic({}))
 
 #build the atlas
 sphere_atlas = (chart_upper_hemisphere, chart_lower_hemisphere)
@@ -72,13 +72,13 @@ sphere_bundle = TangentBundle(atlas = sphere_atlas)
 
 
 #chose an initial point
-initial_point = initial_points[16]
+initial_point = initial_points[2]
 
 #integration time
-t = 8
+t = 10
 
 #integration steps
-steps = 100
+steps = 250
 
 #for visualization purposes build the surface of the sphere in 3d
 sphere = parametrized_surface(parametrization_S2_spherical, chartdomain_S2_spherical)

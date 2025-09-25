@@ -57,66 +57,6 @@ def safe_function_apply(function, point):
         
     return output
 
-#expect data of shape (batch_size, mathematical dimension), (batch_size,mathematical dimension), (batch_size)
-def reconstruction_loss(tangentbundle, inputs, targets, times):
-
-    #vectorize the functions from the tangentbundle
-    encoder = jax.vmap(tangentbundle.psi, in_axes = 0)
-    decoder = jax.vmap(tangentbundle.phi, in_axes = 0)
-
-    #generate reconstructions
-    reconstructions_inputs = decoder(encoder(inputs))
-    reconstructions_targets = decoder(encoder(targets))
-
-    #measure the quality of the reconstruction by MSE
-    reconstructive_power = jnp.mean((reconstructions_inputs - inputs)**2) + jnp.mean((reconstructions_targets - targets)**2)
-
-    #loss
-    return reconstructive_power
-
-#expect data of shape (batch_size, mathematical dimension), (batch_size,mathematical dimension), (batch_size)
-def input_target_loss(tangentbundle, inputs, targets, times):
-
-    #vectorize the functions from the tangentbundle
-    exp = jax.vmap(tangentbundle.exp, in_axes = (0,0,None))
-    encoder = jax.vmap(tangentbundle.psi, in_axes = 0)
-    decoder = jax.vmap(tangentbundle.phi, in_axes = 0)
-
-    #generate predictions
-    num_steps = 49
-
-    latent_inputs = encoder(inputs)
-    latent_targets = encoder(targets)
-
-    latent_predictions = exp(latent_inputs, times, num_steps)
-
-    predictions = decoder(latent_predictions)
-
-    #generate reconstructions
-    reconstructions_inputs = decoder(latent_inputs)
-    reconstructions_targets = decoder(latent_targets)
-
-    #measure the quality of the predicition by MSE
-    predictive_error = jnp.mean((predictions - targets)**2)
-
-    #measure the MSE of the predicted versus the target in latent space
-    if is_multi_chart(latent_predictions):
-
-        _, z_pred = latent_predictions
-        _, z_targ = latent_targets
-
-        latent_predictive_error = jnp.mean((z_pred - z_targ)**2)
-
-    else:
-
-        latent_predictive_error = jnp.mean((latent_predictions - latent_targets)**2)
-
-    #measure the quality of the reconstruction by MSE
-    reconstructive_error = jnp.mean((reconstructions_inputs - inputs)**2 + (reconstructions_targets - targets)**2)
-
-    #loss as a weighted combination (as they have the same units the weight should be in [0,1])
-    return reconstructive_error + predictive_error + latent_predictive_error
-
 #expect data of shape (batch_size, time steps, mathematical dimension), (batch_size,time steps)
 def trajectory_reconstruction_loss(tangentbundle, trajectories, times):
 

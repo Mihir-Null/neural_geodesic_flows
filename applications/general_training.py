@@ -27,8 +27,6 @@ from core.template_psi_phi_g_functions_neural_networks import (
 
 #get the relevant loss functions
 from core.losses import (
-    reconstruction_loss,
-    input_target_loss,
     trajectory_reconstruction_loss,
     trajectory_prediction_loss,
     trajectory_loss

@@ -109,14 +109,36 @@ def chartdomain_S2_stereographic():
     return -1.2, 1.2, -1.2, 1.2, r'x^0', r'x^1'
 
 #I have calculated derivates manually. These exclude the north pole
-def psi_S2_stereographic(r):
+class psi_S2_stereographic(eqx.Module):
+
+    arguments : dict
+    classname: str
+
+    def __init__(self, arguments, key = jax.random.PRNGKey(0)):
+
+        #assign remaining member variables
+        self.arguments = arguments
+        self.classname = "psi_S2_stereographic"
+
+    def __call__(self, r):
 
         x,y,z,vx,vy,vz = r[0],r[1],r[2],r[3],r[4],r[5]
 
         return jnp.array([x/(1-z),y/(1-z),vx/(1-z) + x*vz/((1-z)**2), vy/(1-z) + y*vz/((1-z)**2)])
 
-#these exclude the south pole instead (swapped signs in front of z and vz)
-def psi_S2_inverted_stereographic(r):
+
+class psi_S2_inverted_stereographic(eqx.Module):
+
+    arguments : dict
+    classname: str
+
+    def __init__(self, arguments, key = jax.random.PRNGKey(0)):
+
+        #assign remaining member variables
+        self.arguments = arguments
+        self.classname = "psi_S2_inverted_stereographic"
+
+    def __call__(self, r):
 
         x, y, z, vx, vy, vz = r[0], r[1], r[2], r[3], r[4], r[5]
 
@@ -128,8 +150,19 @@ def psi_S2_inverted_stereographic(r):
         ])
 
 
-#I calculated the derivates manually. These exclude the north pole
-def phi_S2_stereographic(z):
+#I calculated the derivares manually. These exclude the north pole
+class phi_S2_stereographic(eqx.Module):
+
+    arguments : dict
+    classname: str
+
+    def __init__(self, arguments, key = jax.random.PRNGKey(0)):
+
+        #assign remaining member variables
+        self.arguments = arguments
+        self.classname = "phi_S2_stereographic"
+
+    def __call__(self, z):
 
         x = z[0:2]
         v = z[2:4]
@@ -146,7 +179,18 @@ def phi_S2_stereographic(z):
 
 
 #these exclude the south pole instead (just swapped signs in r2 and r5)
-def phi_S2_inverted_stereographic(z):
+class phi_S2_inverted_stereographic(eqx.Module):
+
+    arguments : dict
+    classname: str
+
+    def __init__(self, arguments, key = jax.random.PRNGKey(0)):
+
+        #assign remaining member variables
+        self.arguments = arguments
+        self.classname = "phi_S2_inverted_stereographic"
+
+    def __call__(self, z):
 
         x = z[0:2]
         v = z[2:4]
@@ -163,7 +207,18 @@ def phi_S2_inverted_stereographic(z):
 
 
 #the metric is the same in the default and inverted case
-def g_S2_stereographic(x):
+class g_S2_stereographic(eqx.Module):
+
+    arguments : dict
+    classname: str
+
+    def __init__(self, arguments, key = jax.random.PRNGKey(0)):
+
+        #assign remaining member variables
+        self.arguments = arguments
+        self.classname = "g_S2_stereographic"
+
+    def __call__(self, x):
 
         h = 1 + x[0] ** 2 + x[1] ** 2
 

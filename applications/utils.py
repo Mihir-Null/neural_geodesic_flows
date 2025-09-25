@@ -11,7 +11,6 @@ Collection of auxiliarly methods:
 import jax
 import jax.numpy as jnp
 
-import optax
 import equinox as eqx
 
 import torch
@@ -41,7 +40,6 @@ from core.training import (
 
 #get the relevant inference methods
 from core.inference import (
-    input_target_model_analyis,
     trajectory_model_analyis,
     trajectory_model_visualization
 )
@@ -211,9 +209,9 @@ def perform_training(config,
     if config.continue_training:
 
         model = load_model(config.model_name,
-                            psi_NN_initializer = psi_initializer,
-                            phi_NN_initializer = phi_initializer,
-                            g_NN_initializer = g_initializer)
+                            psi_initializer = psi_initializer,
+                            phi_initializer = phi_initializer,
+                            g_initializer = g_initializer)
     else:
 
         key, key_psi, key_phi, key_g = jax.random.split(key, 4)
@@ -280,18 +278,13 @@ def perform_inference(model_name,
                  random_selection=True,
                  key=jax.random.PRNGKey(seed))
 
-    if mode == "input-target":
-        inputs, targets, times = data
 
-    elif mode =="trajectory":
-        trajectories, times = data
+    if not mode =="trajectory":
+        raise ValueError("perform_inference is only supported for mode 'trajectory'")
 
+    trajectories, times = data
 
-    #perform the analysis respecting the correct mode
-    if mode == "input-target":
-        input_target_model_analyis(model, inputs, targets, times)
+    #perform the analysis
+    trajectory_model_analyis(model, trajectories, times)
 
-    elif mode =="trajectory":
-        trajectory_model_analyis(model, trajectories, times)
-
-        trajectory_model_visualization(model, trajectories, times)
+    trajectory_model_visualization(model, trajectories, times)

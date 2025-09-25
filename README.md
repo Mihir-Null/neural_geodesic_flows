@@ -72,6 +72,9 @@ pip install -r requirements.txt
 ```
 If you have a JAX compatible GPU it is much recommended to install the GPU version of JAX instead. The code will run significantly faster. See [the official installation guide](https://docs.jax.dev/en/latest/installation.html).
 
+### On NixOS
+If you are on NixOS and have the proprietary nvidia driver installed you can add the dev shell `pyngf` from the flake in [my NixOS configuration](https://github.com/julianbuerge/.mynixos) to your flake outputs. Then clone the this repository and enter the shell. Beware that the shell creates a virtual environment that persists after leaving the shell. This is to avoid building the JAX-cuda-plugin nix-package from source.
+
 ### Running a minimal example
 
 `python3 -m applications.minimal_example` will train, save and visualize a NGF model. By way of a quick example it is set up to train on a small two sphere dataset with few epochs (so don't expect great performance). If you want to make this model good, increase the dataset size (the file contains 16384 samples), adjust the batch size and the amount of epochs. Once you've explored this a bit you might want to do training and inference separately, or craft your own experiments altogether. You can do so using the modules `applications/general_training.py` and `applications/general_inference.py`, see [Training your own model](#training-your-own-model) below. Some more details on this model:
@@ -103,7 +106,7 @@ or
 dataset.npz with keys 'trajectories', 'times'
 with shapes (many, trajectory timepoints, dim_dataspace) and (many, trajectory timepoints).
 ```
-and then adapt the train and test dataset names in  `applications/general_training.py` accordingly. In `core/losses.py` there are different loss functions for working with input,target or trajectory data. Use the one that matches your data format.
+and then adapt the train and test dataset names in  `applications/general_training.py` accordingly. In `core/losses.py` there are loss functions for working with trajectory data, since this is the recommended way to learn NGFs. The ability to load input-target data is provided for generalized tasks like classification etc. for which you'll need to provide your own custom loss function. Alternatively, if you want to train standard NGFs using input-target data (not recommended) you will find loss functions in `applications/master_thesis/input_target_losses.py`.
 
 Alternatively, if you want to use NGFs in your own setup, `core/` contains all essential functionality of NGFs as a model without specific setup routines such as data loading, hyperparameter management or model saving.
 

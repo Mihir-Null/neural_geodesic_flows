@@ -13,11 +13,9 @@ the update method is the most highlevel method that get called repeatedly,
 therefore we do jit (just in time compilation) on it.
 """
 
-import jax
 import jax.numpy as jnp
 
 import equinox as eqx
-import optax
 
 import wandb
 

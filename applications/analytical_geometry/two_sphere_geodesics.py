@@ -5,8 +5,6 @@ Computation and visualization of geodesics on the two sphere.
 import jax
 import jax.numpy as jnp
 
-import numpy as np
-
 from core.template_psi_phi_g_functions_analytical import (
     chartdomain_S2_spherical,
     psi_S2_spherical,

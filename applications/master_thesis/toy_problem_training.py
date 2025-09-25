@@ -15,8 +15,10 @@ from core.template_psi_phi_g_functions_neural_networks import (
 
 #get the relevant loss functions
 from core.losses import (
-    input_target_loss,
     trajectory_loss,
+)
+from input_target_losses import (
+    input_target_loss
 )
 
 #get the relevant utility methods

@@ -5,8 +5,7 @@ The essential methods are apply_model_function and find_indices.
 
 All others call them, and use their return values to generate statistics or visualizations.
 
-We use three different formats of the data:
-- inputs, targets & times,    expected to be of shapes (many, mathdim) & (many,)
+We use two different formats of the data:
 - trajectories & times,       expected to be of shape (many, trajectory points, mathdim) & (many, trajectory points)
 - points,                     expected to be of shape (many, mathdim)
 
@@ -76,27 +75,6 @@ def find_indices(correct_outputs, model_outputs, size = 10):
     return worst_indices, average_indices, best_indices
 
 
-#perform reconstruction and prediction analysis on input to target style data
-def input_target_model_analyis(model, inputs, targets, times):
-
-    #perform reconstruction on the whole trajectories
-    autoencode = lambda y : model.phi(model.psi(y))
-
-    recon_inputs = apply_model_function(autoencode, tuple((inputs,)), vmap_axes = (0))
-    recon_targets = apply_model_function(autoencode, tuple((targets,)), vmap_axes = (0))
-
-    #perform prediction starting from the inputs until the final times with 49 steps.
-    pred = apply_model_function(model,
-                                tuple((inputs, times, 49)),
-                                vmap_axes = (0,0,None))
-
-    #find the reconstruction and prediction errors
-    recon_error = jnp.mean((inputs - recon_inputs)**2 + (targets - recon_targets)**2)
-    pred_error = jnp.mean((targets - pred)**2)
-
-    print(f"Reconstruction mean square error {recon_error}\n")
-    print(f"Prediction mean square error {pred_error}\n")
-
 #perform reconstruction and prediction analysis on trajectory style data
 def trajectory_model_analyis(model, trajectories, times):
 
@@ -120,10 +98,6 @@ def trajectory_model_analyis(model, trajectories, times):
     print(f"Reconstruction mean square error {recon_error}\n")
     print(f"Prediction mean square error {pred_error}\n")
 
-
-#TO DO: Add general visual inference methods
-def input_target_model_visualization(model, inputs, targets, times):
-    pass
 
 #THIS METHOD IS HARDCODED FOR DATA SPACES THAT ARE THEMSELVES TANGENT BUNDLES
 #We show given data space trajectories and a models prediction of said trajectories
@@ -169,7 +143,7 @@ def trajectory_model_visualization(model, trajectories, times, type = 'average',
         raise ValueError("type has to be 'worst', 'average' or 'best'")
 
     #find data and latent space dimensions
-    half_dim_dataspace = trajectories.shape[-1]//2 #unfortunately this method also assumes that the data space is a tangent bundle
+    half_dim_dataspace = trajectories.shape[-1]//2 #unfortunately this method assumes that the data space is a tangent bundle
     dim_M = encoded_trajectories.shape[-1]//2 #latent space is tangent bundle TM
 
     #find out what combination of 3*d, 2*d the data, latent space are

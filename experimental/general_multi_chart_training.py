@@ -9,6 +9,10 @@ All the logic would be stored in applications/utils.perform_training.py
 import wandb
 
 #get the relevant neural network classes to initialize phi,psi, g as
+from core.template_psi_phi_g_functions_analytical import (
+    g_S2_stereographic
+)
+
 from core.template_psi_phi_g_functions_neural_networks import (
     identity_diffeomorphism,
     NN_diffeomorphism,
@@ -26,8 +30,6 @@ from core.template_psi_phi_g_functions_neural_networks import (
 
 #get the relevant loss functions
 from core.losses import (
-    reconstruction_loss,
-    input_target_loss,
     trajectory_reconstruction_loss,
     trajectory_prediction_loss,
     trajectory_loss
@@ -57,19 +59,18 @@ wandb.init(project="Neural geodesic flows",
 
 config = get_wandb_config(train_dataset_name  = "sphere_trajectories_train",
                           test_dataset_name = "sphere_trajectories_test",
-                          model_name = "sphere_model",
+                          model_name = "sphere_ana-metric",
                           dim_dataspace = 6,
                           dim_M = 2,
-                          psi_arguments = {"in_size": 6,
-                                           "out_size": 4,
-                                           "hidden_sizes_x": [32, 32]},
-                          phi_arguments = {"in_size": 4,
-                                           "out_size": 6,
-                                           "hidden_sizes_x": [32, 32]},
-                          g_arguments = {'dim_M':2,
-                                         'hidden_sizes':[32,32]},
+                          psi_arguments = {"in_size" : 6,
+                                           "out_size" : 4,
+                                           "hidden_sizes_x" : [32, 32]},
+                          phi_arguments = {"in_size" : 4,
+                                           "out_size" : 6,
+                                           "hidden_sizes_x" : [32, 32]},
+                          g_arguments = {},
                           batch_size = 512,
-                          train_dataset_size = 1024,
+                          #train_dataset_size = 64,
                           test_dataset_size = 64,
                           learning_rate = 1e-3,
                           epochs = 100, loss_print_frequency = 10,
@@ -85,7 +86,7 @@ config = get_wandb_config(train_dataset_name  = "sphere_trajectories_train",
 #if you forgot, the network class names are written in the model_name_high_level_params.json file (for this exact purpose)
 psi_initializer = NN_Jacobian_split_diffeomorphism
 phi_initializer = NN_Jacobian_split_diffeomorphism
-g_initializer = NN_metric
+g_initializer = identity_metric
 
 
 #make sure that the chosen loss functions match the used datasets

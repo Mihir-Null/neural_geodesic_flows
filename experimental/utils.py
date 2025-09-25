@@ -6,10 +6,8 @@ Once this here is in a satisfying state I will combine it into the applications/
 
 from chex import assert_equal
 import jax
-import jax.lax as lax
 import jax.numpy as jnp
 
-import optax
 import equinox as eqx
 
 import torch
@@ -49,9 +47,7 @@ from core.training import (
 
 #get the relevant inference methods
 from core.inference import (
-    input_target_model_analyis,
     trajectory_model_analyis,
-    trajectory_model_visualization
 )
 
 
@@ -524,16 +520,11 @@ def perform_inference(model_name,
                  random_selection=True,
                  key=jax.random.PRNGKey(seed))
 
-    if mode == "input-target":
-        inputs, targets, times = data
+    if not mode == "trajectory":
+            raise ValueError("perform_inference is only supported for data of mode 'trajectory'")
 
-    elif mode =="trajectory":
-        trajectories, times = data
+    trajectories, times = data
 
 
-    #perform the analysis respecting the correct mode
-    if mode == "input-target":
-        input_target_model_analyis(model, inputs, targets, times)
-
-    elif mode =="trajectory":
-        trajectory_model_analyis(model, trajectories, times)
+    #perform the analysis
+    trajectory_model_analyis(model, trajectories, times)

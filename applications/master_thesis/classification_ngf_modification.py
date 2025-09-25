@@ -5,7 +5,7 @@ and we want to do MNIST classification some very specialized modifications are n
 They are defined here and include:
 - NN template for psi and phi tailored for the data/datasets/MNIST_train dataset
 - classification loss and error methods
-- unit tests for the above that get executed when this file is called
+- unit tests for the above that get executed when this file is executed as main
 """
 
 import jax
@@ -25,8 +25,6 @@ from tests.utils import (
     printheading,
     print_function_evaluation,
     test_function_dimensionality,
-    test_function_evaluation,
-    test_metric_evaluation,
 )
 
 ##################################### NN templates #####################################

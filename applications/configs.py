@@ -6,8 +6,6 @@ and executes a training run.
 Define variables containing the paths to data
 """
 
-import jax
-
 import optax
 
 import wandb

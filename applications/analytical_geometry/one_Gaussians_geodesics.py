@@ -3,10 +3,7 @@ Computation and visualization of geodesics on the statistical manifold of one di
 equipped with the Fisher information matrix as the Riemannian metric.
 """
 
-import jax
 import jax.numpy as jnp
-
-import numpy as np
 
 from core.template_psi_phi_g_functions_analytical import (
     chartdomain_Gaussians1,

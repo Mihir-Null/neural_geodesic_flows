@@ -4,9 +4,6 @@ from the master thesis Neural geodesic flows published at
 https://doi.org/10.3929/ethz-b-000733724
 """
 
-import jax
-import jax.numpy as jnp
-
 import equinox as eqx
 
 #get the relevant neural network classes to initialize phi,psi, g as

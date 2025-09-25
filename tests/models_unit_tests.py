@@ -2,15 +2,10 @@
 Unit tests for models.py
 """
 
-import jax
-import jax.numpy as jnp
-
 from tests.utils import (
     printheading,
-    print_function_evaluation,
     test_function_dimensionality,
     test_function_evaluation,
-    test_metric_evaluation,
 )
 
 from core.models import (

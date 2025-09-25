@@ -16,6 +16,8 @@ import jax.numpy as jnp
 
 import equinox as eqx
 
+from core.template_psi_phi_g_functions_analytical import g_S2_stereographic, psi_S2_stereographic
+
 #patch of a manifold. We have interior and boundary points.
 #the boundary points are meant to overlap with some other domain.
 #each boundary points uniquely belong to the interior of another domain
@@ -298,7 +300,27 @@ def create_atlas(domains: tuple,
 
     atlas = ()
 
+    from core.template_psi_phi_g_functions_analytical import (
+            psi_S2_stereographic,
+            psi_S2_inverted_stereographic,
+            phi_S2_stereographic,
+            phi_S2_inverted_stereographic,
+            g_S2_stereographic
+    )
+
     for i, domain in enumerate(domains):
+
+        """
+        #temporarily hardcode some different behavior:
+        if i == 0:
+            #psi = psi_S2_inverted_stereographic(psi_arguments, psi_keys[i])
+            #phi = phi_S2_inverted_stereographic(phi_arguments, phi_keys[i])
+            g = g_S2_stereographic(g_arguments, g_keys[i])
+        elif i == 1:
+            #psi = psi_S2_stereographic(psi_arguments, psi_keys[i])
+            #phi = phi_S2_stereographic(phi_arguments, phi_keys[i])
+            g = g_S2_stereographic(g_arguments, g_keys[i])
+        """
 
         psi = psi_initializer(psi_arguments, psi_keys[i])
         phi = phi_initializer(phi_arguments, phi_keys[i])

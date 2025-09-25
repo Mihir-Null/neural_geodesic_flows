@@ -2,7 +2,6 @@
 Unit tests for template_psi_phi_g_functions
 """
 
-import jax
 import jax.numpy as jnp
 
 from tests.utils import (
