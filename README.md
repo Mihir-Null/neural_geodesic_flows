@@ -73,7 +73,7 @@ pip install -r requirements.txt
 If you have a JAX compatible GPU it is much recommended to install the GPU version of JAX instead. The code will run significantly faster. See [the official installation guide](https://docs.jax.dev/en/latest/installation.html).
 
 ### On NixOS
-If you are on NixOS and you can add the dev shell found in [my NixOS configuration](https://github.com/julianbuerge/.mynixos) in `.mynixos/devshells/sciml-shell.nix` or `.mynixos/devshells/scimlcuda-shell.nix` (GPU version of jax) to your `devShells.system` flake outputs. Then clone this repository and enter the shell. Note that if you use the GPU version then upon entering the shell for the first time it will build JAX-Cuda from source which may take a long time.
+If you are on NixOS you can add the dev shell found in [my NixOS configuration](https://github.com/julianbuerge/.mynixos) in `.mynixos/devshells/sciml-shell.nix` or `.mynixos/devshells/scimlcuda-shell.nix` (GPU version of jax) to your `devShells.system` flake outputs. Then clone this repository and enter the shell. Note that if you use the GPU version then upon entering the shell for the first time it will build JAX-Cuda from source which may take a long time.
 
 ### Running a minimal example
 
