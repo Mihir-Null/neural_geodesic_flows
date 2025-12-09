@@ -1,18 +1,23 @@
 \documentclass[aspectratio=169]{beamer}
 \usetheme{metropolis}
 
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+
 \setbeamertemplate{section in toc}{\textbullet\ \inserttocsection}
 \setbeamertemplate{subsection in toc}{\hspace*{1.5em}\parbox[t]{0.75\textwidth}{\raggedright\footnotesize\textendash\ \inserttocsubsection}}
 
-\title{Magic State Distillation From Quadratic Residue based CSS codes}
-\subtitle{Placeholder Subtitle}
-\author{Mihir Talati, Leonardo S.P Velloso}
+\title{Neural Geodesic Flows}
+\subtitle{Learning Dynamics as Geodesics on a Latent Manifold}
+\author{Mihir Talati (after J.~B\"urge, ETH Zurich 2025)}
 \date{\today}
 
 \begin{document}
 
 \maketitle
 
+%------------------------ OUTLINE ------------------------%
 \section{Presentation Outline}
 \begin{frame}{Presentation Outline}
   \begin{columns}[t,onlytextwidth]
@@ -23,14 +28,584 @@
   \end{columns}
 \end{frame}
 
-\section{Background}
-\subsection{Neural ODEs}
-\begin{frame}{}
+%========================================================%
+%  SECTION 2: NEURAL ODES
+%========================================================%
+\section{Neural Ordinary Differential Equations}
+
+\subsection{From ResNets to ODEs}
+
+\begin{frame}{ResNet as an Euler step}
   \begin{itemize}
+    \item A (very) simplified ResNet block:
+      \[
+        h_{k+1} = h_k + f_\theta(h_k)
+      \]
+      where $k$ is the layer index.
+    \item If you think of $k$ as discrete time and $f_\theta$ as a velocity field,
+      this is exactly a forward Euler step for the ODE
+      \[
+        \frac{dh}{dt} = f_\theta(h(t)).
+      \]
+    \item Idea of \emph{Neural ODEs}: instead of stacking many discrete layers,
+      treat depth as continuous time and let an ODE solver play the role of the network.
+    \item Forward pass $\Rightarrow$ solve an ODE; backward pass $\Rightarrow$ differentiate
+      \emph{through} the ODE solver (adjoint method, automatic differentiation, \dots).
   \end{itemize}
 \end{frame}
 
+\subsection{Neural ODEs in practice}
+
+\begin{frame}{Neural ODEs as continuous-depth networks}
+  \begin{itemize}
+    \item Define a dynamics model
+      \[
+        \frac{dh}{dt} = f_\theta(h(t), t),
+      \]
+      where $f_\theta$ is a neural network.
+    \item Given initial state $h(0)$, an ODE solver gives
+      \[
+        h(T) = \text{ODESolve}(f_\theta, h(0), T).
+      \]
+    \item Neural ODEs are good for:
+      \begin{itemize}
+        \item Modeling continuous-time data (trajectories, physical systems, time series).
+        \item Evaluating the model at arbitrary times (interpolation, extrapolation).
+        \item Sharing parameters across ``depth''.
+      \end{itemize}
+    \item Many variants: neural PDEs, Hamiltonian / Lagrangian NNs, neural manifold dynamics, \dots
+  \end{itemize}
+\end{frame}
+
+\subsection{ODE-based models for dynamics}
+
+\begin{frame}{NODEs, LNNs, HNNs (very briefly)}
+  \begin{itemize}
+    \item \textbf{Neural ODEs (NODEs)}:
+      learn a generic ODE $f_\theta$ that fits observed trajectories.
+    \item \textbf{Lagrangian NN (LNN)}:
+      \begin{itemize}
+        \item Learn a Lagrangian $L_\theta(q, \dot q)$.
+        \item Dynamics come from Euler--Lagrange equations.
+        \item Good at conserving (approximate) energy.
+      \end{itemize}
+    \item \textbf{Hamiltonian NN (HNN)}:
+      \begin{itemize}
+        \item Learn Hamiltonian $H_\theta(q, p)$.
+        \item Dynamics come from Hamilton's equations.
+        \item Built-in symplectic structure and energy conservation.
+      \end{itemize}
+    \item These models learn an \emph{underlying law} of motion, not just a black-box predictor.
+  \end{itemize}
+\end{frame}
+
+%========================================================%
+%  SECTION 3: MOTIVATION / HIGH-LEVEL IDEA
+%========================================================%
 \section{Motivation and Approach}
 
+\subsection{Manifold hypothesis \& autoencoders}
+
+\begin{frame}{The manifold hypothesis}
+  \begin{itemize}
+    \item Real-world data often live in a high-dimensional ambient space $\mathbb{R}^n$
+      (e.g.\ 784-D MNIST images, fluid simulations, video frames).
+    \item \textbf{Manifold hypothesis}: data actually lie near a much lower-dimensional
+      \emph{manifold} embedded in $\mathbb{R}^n$.
+      \begin{itemize}
+        \item Example: images of a rotating object $\approx$ points on a low-dimensional surface.
+      \end{itemize}
+    \item \textbf{Autoencoders}:
+      \[
+        \text{data manifold } \subset \mathbb{R}^n
+        \;\longleftrightarrow\;
+        \text{latent manifold } \subset \mathbb{R}^{\tilde d}
+      \]
+      with encoder $\psi$ and decoder $\phi$.
+    \item Manifold learning + dynamics:
+      \begin{itemize}
+        \item Learn a good latent representation \emph{and}
+        \item learn dynamics on that latent manifold.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{Why bring in geometry?}
+
+\begin{frame}{Why Riemannian geometry for dynamics?}
+  \begin{itemize}
+    \item A \textbf{Riemannian manifold} $(M,g)$ is a manifold $M$ equipped
+      with a \emph{metric tensor} $g$:
+      \begin{itemize}
+        \item At each point, $g$ defines dot products, lengths, angles, distances.
+        \item Think: curved generalization of Euclidean space.
+      \end{itemize}
+    \item Once we have a metric $g$, we get:
+      \begin{itemize}
+        \item Intrinsic distances and shortest paths (\textbf{geodesics}).
+        \item Curvature, areas, volumes, covariant derivatives, \dots
+      \end{itemize}
+    \item For dynamics data, learning a Riemannian metric means:
+      \begin{itemize}
+        \item The geometry of the latent space encodes the ``nature'' of the dynamics.
+        \item We can analyze trajectories using curvature, geodesic distances, etc.
+      \end{itemize}
+    \item \textbf{Neural geodesic flows} (NGFs) combine:
+      \begin{itemize}
+        \item Manifold learning (autoencoder to a latent manifold),
+        \item Riemannian geometry (learn a metric),
+        \item and ODE-based dynamics (geodesic flow).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{High-level idea of Neural Geodesic Flows}
+
+\begin{frame}{Core idea in one picture}
+  \begin{itemize}
+    \item Assume data are trajectories $y(t)$ living on some unknown manifold
+      embedded in $\mathbb{R}^n$.
+    \item NGFs try to learn:
+      \begin{enumerate}
+        \item A low-dimensional latent \textbf{Riemannian manifold} $(M,g)$.
+        \item A mapping of data into its \textbf{tangent bundle} $TM$ (states + velocities).
+        \item A \textbf{geodesic flow} on $TM$ that matches the observed dynamics.
+      \end{enumerate}
+    \item The forward pass:
+      \[
+        \text{data} \xrightarrow{\psi_\theta}
+        z_0 \in TM
+        \xrightarrow{\text{geodesic ODE w.r.t.\ }g_\theta}
+        z_T
+        \xrightarrow{\phi_\theta}
+        \text{predicted data}.
+      \]
+    \item We learn:
+      \begin{itemize}
+        \item the encoder $\psi_\theta$ (chart + diffeomorphism to $TM$),
+        \item the decoder $\phi_\theta$ (parametrization back to data space),
+        \item and the metric $g_\theta$ (a neural net).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+%========================================================%
+%  SECTION 4: GEOMETRY PRIMER
+%========================================================%
+\section{Differential Geometry in 10 Minutes}
+
+\subsection{Manifolds and charts}
+
+\begin{frame}{What is a manifold? (intuitive version)}
+  \begin{itemize}
+    \item A \textbf{manifold} is a space that \emph{locally} looks like $\mathbb{R}^d$,
+      but can be globally curved or have complicated topology.
+    \item Examples:
+      \begin{itemize}
+        \item Circle $S^1$ (1D manifold).
+        \item Sphere $S^2$ (2D manifold).
+        \item Torus (donut surface, 2D manifold).
+      \end{itemize}
+    \item To do calculus we use \textbf{charts}:
+      \begin{itemize}
+        \item A chart is a local coordinate map
+          \[
+            \varphi: U \subset M \to \mathbb{R}^d.
+          \]
+        \item One chart usually does not cover the whole manifold
+          (e.g.\ longitude/latitude singularities on a sphere).
+        \item An \textbf{atlas} is a collection of charts that covers $M$.
+      \end{itemize}
+    \item In NGFs we mostly work with a \emph{single} learned chart for the latent manifold.
+  \end{itemize}
+\end{frame}
+
+\subsection{Tangent vectors and the tangent bundle}
+
+\begin{frame}{Tangent spaces and tangent bundle}
+  \begin{itemize}
+    \item At each point $x\in M$ we have a \textbf{tangent space} $T_xM$:
+      the space of velocities of curves going through $x$.
+    \item Think: all possible directions you can move if you are standing at $x$.
+    \item The \textbf{tangent bundle} $TM$ collects all tangent spaces:
+      \[
+        TM = \bigsqcup_{x\in M} T_xM.
+      \]
+      A point in $TM$ is a pair $(x, v)$ with $v\in T_xM$.
+    \item For dynamics, $(x,v)$ is a natural state:
+      position $x$ and velocity $v$.
+    \item NGFs learn dynamics as a flow on $TM$.
+  \end{itemize}
+\end{frame}
+
+\subsection{Riemannian metric and geodesics}
+
+\begin{frame}{Riemannian metric and geodesics}
+  \begin{itemize}
+    \item A \textbf{Riemannian metric} $g$ assigns to every $x\in M$
+      an inner product $g_x(\cdot,\cdot)$ on $T_xM$.
+      \begin{itemize}
+        \item Generalizes the dot product.
+        \item Lets us define lengths, angles, energies, curvature.
+      \end{itemize}
+    \item The length of a curve $\gamma(t)$ is
+      \[
+        L(\gamma) = \int \sqrt{g_{\gamma(t)}(\dot\gamma(t),\dot\gamma(t))}\,dt.
+      \]
+    \item \textbf{Geodesics} are curves that locally minimize length (or equivalently, energy).
+      \begin{itemize}
+        \item In flat space: straight lines.
+        \item On a sphere: great circles.
+      \end{itemize}
+    \item In coordinates, geodesics satisfy the \emph{geodesic equation}
+      \[
+        \ddot x^k + \Gamma^{k}_{ab}(x)\,\dot x^a\dot x^b = 0,
+      \]
+      where $\Gamma^k_{ab}$ are the (Levi--Civita) connection coefficients
+      computed from $g$.
+  \end{itemize}
+\end{frame}
+
+%========================================================%
+%  SECTION 5: THE NEURAL GEODESIC FLOWS MODEL
+%========================================================%
+\section{Neural Geodesic Flows Model}
+
+\subsection{Data and mapping assumptions}
+
+\begin{frame}{Setup: data and latent space}
+  \begin{itemize}
+    \item Data live in $\mathbb{R}^n$, but actually lie on some unknown submanifold
+      $\tilde N \subset \mathbb{R}^n$.
+    \item There is some (unknown) diffeomorphism
+      \[
+        F : \tilde N \to N = TM,
+      \]
+      where $N$ is the tangent bundle of a latent Riemannian manifold $(M,g)$.
+    \item On $N$ we assume the dynamics are simply the \textbf{geodesic flow}
+      (moving along geodesics of $(M,g)$).
+    \item Roughly:
+      \begin{itemize}
+        \item Data trajectories in $\mathbb{R}^n$ $\approx$ trajectories in $TM$
+          that are geodesics of some unknown metric $g$.
+        \item Our job: learn both the manifold geometry and the mapping that
+          makes this true \emph{approximately}.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{Architecture: autoencoder + geodesic ODE}
+
+\begin{frame}{Encoder, metric network, decoder}
+  \begin{itemize}
+    \item In practice we do not know $\tilde N$, $M$, $F$, or $g$.
+    \item We learn:
+      \begin{itemize}
+        \item Encoder $\psi_\theta : \mathbb{R}^n \to U \subset \mathbb{R}^{2m}$\\
+          (a single chart of $TM$; outputs $(x,v)$-coordinates).
+        \item Decoder $\phi_\theta : U \to \mathbb{R}^n$\\
+          (maps latent state back to data space).
+        \item Metric network $g_\theta : \mathbb{R}^m \to \mathbb{R}^{m\times m}$\\
+          (given a position $x$, outputs a positive-definite matrix $g_\theta(x)$).
+      \end{itemize}
+    \item Typical metric parametrization:
+      \[
+        g_\theta(x) = I + L_\theta(x) L_\theta(x)^\top
+      \]
+      (ensures positive definiteness).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Geodesic ODE and exponential map}
+  \begin{itemize}
+    \item Once $g_\theta$ is known, we can compute connection coefficients
+      $\Gamma^k_{ab}(x)$ by differentiating $g_\theta$.
+    \item This gives the geodesic ODE in coordinates:
+      \[
+        \ddot x^k = -\Gamma^k_{ab}(x)\,\dot x^a\dot x^b.
+      \]
+    \item We package this into a vector field $X$ on $TM$ and define the
+      \textbf{exponential map}:
+      \[
+        \exp_{g_\theta}(z_0, t)
+      \]
+      = the result of integrating the geodesic ODE starting at $z_0$ for time $t$.
+    \item In code, this is implemented as an ODE solver (e.g.\ RK4) over the vector
+      field defined by $g_\theta$.
+  \end{itemize}
+\end{frame}
+
+\subsection{Forward pass and loss functions}
+
+\begin{frame}{Forward pass of an NGF}
+  \begin{itemize}
+    \item Given an input $y_0 \in \mathbb{R}^n$ and a time $t$:
+      \[
+        \begin{aligned}
+          z_0 &= \psi_\theta(y_0) \quad \text{(encode to } TM \text{)} \\
+          z_t &= \exp_{g_\theta}(z_0, t) \quad \text{(geodesic ODE solve)} \\
+          \hat y_t &= \phi_\theta(z_t) \quad \text{(decode back to data)}.
+        \end{aligned}
+      \]
+    \item This is a \textbf{neural differential equation} where the ODE is
+      \emph{specifically} the geodesic ODE of a learned metric.
+    \item At the same time, it is:
+      \begin{itemize}
+        \item a NODE (because we learn an ODE in latent space),
+        \item a Lagrangian NN (geodesic motion minimizes an energy functional),
+        \item and a Hamiltonian NN (there is an associated geodesic Hamiltonian).
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Training objectives}
+  \begin{itemize}
+    \item We have trajectories or pairs $(\text{input}, \text{target}, \Delta t)$.
+    \item Typical losses combine:
+      \begin{enumerate}
+        \item \textbf{Reconstruction loss}: make $\phi_\theta(\psi_\theta(y)) \approx y$
+          for all observed data points.
+        \item \textbf{Data-space prediction loss}:
+          \[
+            \phi_\theta\big(\exp_{g_\theta}(\psi_\theta(y_0), \Delta t)\big)
+            \approx y_{\text{target}}.
+          \]
+        \item \textbf{Latent-space prediction loss}:
+          \[
+            \exp_{g_\theta}(\psi_\theta(y_0), \Delta t)
+            \approx \psi_\theta(y_{\text{target}}).
+          \]
+      \end{enumerate}
+    \item Intuition:
+      \begin{itemize}
+        \item Autoencoder should be approximately invertible on the data manifold.
+        \item Geodesic flow in latent space should match the observed dynamics,
+          both before and after decoding.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{Implementation sketch (JAX)}
+
+\begin{frame}{Implementation ingredients (JAX / Equinox)}
+  \begin{itemize}
+    \item JAX is used for:
+      \begin{itemize}
+        \item automatic differentiation (needed for metric $\to$ Christoffel).
+        \item vectorization over batches.
+      \end{itemize}
+    \item A \texttt{TangentBundle} class encapsulates:
+      \begin{itemize}
+        \item \texttt{$\psi$}: encoder (diffeomorphism + chart).
+        \item \texttt{$\phi$}: decoder (inverse chart + inverse diffeomorphism).
+        \item \texttt{g}: metric network.
+        \item ODE solver (\texttt{exp}, \texttt{exp\_return\_trajectory}).
+      \end{itemize}
+    \item Training uses an optimizer (e.g.\ Adam via Optax), which differentiates
+      through:
+      \begin{itemize}
+        \item the encoder and decoder, and
+        \item the numerical ODE solver for geodesics.
+      \end{itemize}
+    \item Once trained, the same class can also compute geometric quantities:
+      scalar products, curvature, sectional curvature, \dots
+  \end{itemize}
+\end{frame}
+
+\subsection{Relation to other models}
+
+\begin{frame}{How NGFs relate to NODE, LNN, HNN, NMD}
+  \begin{itemize}
+    \item \textbf{As a NODE}: the latent geodesic vector field is an ODE,
+      so NGFs are special Neural ODEs.
+    \item \textbf{As LNN/HNN}:
+      \begin{itemize}
+        \item A geodesic flow is a special case of both Lagrangian and Hamiltonian dynamics.
+        \item NGFs are LNNs/HNNs where the Lagrangian/Hamiltonian has a fixed
+          geometric form induced by $g_\theta$.
+      \end{itemize}
+    \item \textbf{Compared to Neural Manifold Dynamics (NMD)}:
+      \begin{itemize}
+        \item NMD learns an atlas and a generic NODE on the latent manifold.
+        \item NGFs learn a \emph{metric} and enforce the ODE to be geodesic,
+          giving more geometric structure (at the cost of more constraints).
+      \end{itemize}
+    \item The hope: this additional structure leads to better energy conservation,
+      interpretability, and insights into the underlying dynamics.
+  \end{itemize}
+\end{frame}
+
+%========================================================%
+%  SECTION 6: CASE STUDIES & RESULTS
+%========================================================%
+\section{Case Studies and Results}
+
+\subsection{Toy example: geodesics on the sphere}
+
+\begin{frame}{Toy problem: geodesic flow on $S^2$}
+  \begin{itemize}
+    \item Goal: sanity check that NGFs can recover known geometry and dynamics.
+    \item Data: trajectories that are \emph{true} geodesics on the 2D sphere $S^2$
+      with its standard spherical metric.
+    \item Setup:
+      \begin{itemize}
+        \item Choose $N = TS^2$ as ground truth.
+        \item Sample geodesic curves on $S^2$ and embed them into $\mathbb{R}^n$.
+        \item Train NGF model to learn both:
+          \begin{itemize}
+            \item the latent $S^2$-like manifold and
+            \item its geodesic flow.
+          \end{itemize}
+      \end{itemize}
+    \item Results (qualitative summary):
+      \begin{itemize}
+        \item Latent space looks spherical.
+        \item Learned metric has nearly constant positive curvature
+          (like a sphere).
+        \item Geodesic predictions match the ground truth geodesics well.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{MNIST classification}
+
+\begin{frame}{MNIST as a test of generalization}
+  \begin{itemize}
+    \item MNIST: 28$\times$28 grayscale images of digits 0--9.
+    \item Two NGF-style approaches:
+      \begin{enumerate}
+        \item Simple MLP encoder $\psi_\theta$, geodesic solve, then a small classifier head.
+        \item Convolutional encoder similar to the PyTorch MNIST example,
+          optionally followed by a geodesic solve.
+      \end{enumerate}
+    \item Variants:
+      \begin{itemize}
+        \item Different latent dimensions (e.g.\ 2 vs 10).
+        \item With and without actually running the geodesic solver.
+        \item Larger vs smaller encoder networks.
+      \end{itemize}
+    \item Observations:
+      \begin{itemize}
+        \item All models achieve $\sim 90$--$95\%$ test accuracy.
+        \item Using the geodesic solve usually does \emph{not} hurt performance,
+          and sometimes slightly helps.
+        \item Suggests NGFs can be adapted to ``standard'' ML tasks without
+          completely breaking performance.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{Two-body problem}
+
+\begin{frame}{Classical mechanics: two-body problem}
+  \begin{itemize}
+    \item Dynamics: two masses interacting via Newtonian gravity in 2D.
+      \begin{itemize}
+        \item Phase space: positions and momenta.
+        \item True system has conserved physical energy and angular momentum.
+      \end{itemize}
+    \item NGF setup:
+      \begin{itemize}
+        \item Autoencode the state of the system into a latent $TM$.
+        \item Use geodesic flow as the latent dynamics.
+        \item Compare with a Hamiltonian NN baseline.
+      \end{itemize}
+    \item Results (high-level):
+      \begin{itemize}
+        \item NGFs can predict orbits for a reasonably long time horizon.
+        \item The model conserves a learned ``geodesic energy'' and approximately
+          conserves the true physical energy.
+        \item Performance is in the same ballpark as HNNs, sometimes slightly worse,
+          but with richer geometric structure.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{Navier--Stokes equation}
+
+\begin{frame}{Navier--Stokes: first experiments}
+  \begin{itemize}
+    \item Navier--Stokes: nonlinear PDE describing incompressible fluid flow.
+    \item Idea: treat snapshots of the velocity field as points on an unknown
+      low-dimensional manifold; try to learn a geodesic flow that approximates
+      the dynamics.
+    \item Practical difficulties:
+      \begin{itemize}
+        \item High-dimensional input space and complex dynamics.
+        \item Single-chart architecture may not be expressive enough.
+        \item Numerical stiffness and long time horizons make ODE solving harder.
+      \end{itemize}
+    \item Outcome:
+      \begin{itemize}
+        \item Current NGF implementation struggled to learn good dynamics here.
+        \item Indicates that more expressive architectures (multiple charts, better
+          encoders, specialized regularization) are needed for complex PDEs.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{Limitations and future work}
+
+\begin{frame}{Limitations \& possible extensions}
+  \begin{itemize}
+    \item \textbf{Single chart}: current implementation learns only one global chart
+      for the latent manifold.
+      \begin{itemize}
+        \item Not suitable for manifolds that cannot be covered by a single chart
+          (e.g.\ full sphere).
+        \item Extension: atlas of charts + chart-switching during integration.
+      \end{itemize}
+    \item \textbf{Expressivity vs.\ constraints}:
+      \begin{itemize}
+        \item Enforcing geodesic dynamics may make some tasks harder to fit.
+        \item But it gives geometric interpretability and energy conservation.
+      \end{itemize}
+    \item \textbf{Interpretability}:
+      \begin{itemize}
+        \item Metric $g_\theta$ and curvature could reveal hidden structure
+          of the dynamics (e.g.\ conserved quantities, effective dimensions).
+      \end{itemize}
+    \item \textbf{Future directions}:
+      \begin{itemize}
+        \item Atlas-based NGFs (multiple charts).
+        \item Stronger priors on $g_\theta$ for known physics (symmetries, invariances).
+        \item Symbolic regression on learned geometric quantities.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+%========================================================%
+%  CLOSING
+%========================================================%
+
+\begin{frame}{Takeaways}
+  \begin{itemize}
+    \item Neural geodesic flows:
+      \begin{itemize}
+        \item Learn a latent Riemannian manifold and its geodesic flow.
+        \item Combine manifold learning, differential geometry, and neural ODEs.
+      \end{itemize}
+    \item For ML students:
+      \begin{itemize}
+        \item You can think of NGFs as ``NODEs with geometry built in''.
+        \item The metric $g_\theta$ is a learned notion of distance / energy on the latent space.
+        \item Trajectories become shortest paths with respect to this learned geometry.
+      \end{itemize}
+    \item Big picture:
+      \begin{itemize}
+        \item Using geometry can make models more interpretable and physically faithful.
+        \item There is still a lot to explore: better architectures, richer manifolds,
+          and new applications.
+      \end{itemize}
+  \end{itemize}
+\end{frame}
 
 \end{document}
+
+% Citations to the thesis this presentation is based on (kept as a LaTeX comment so they don't affect compilation):
+% :contentReference[oaicite:0]{index=0}
+% :contentReference[oaicite:1]{index=1}
+% :contentReference[oaicite:2]{index=2}
+% :contentReference[oaicite:3]{index=3}
+% :contentReference[oaicite:4]{index=4}
+```
