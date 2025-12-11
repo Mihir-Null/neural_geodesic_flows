@@ -1,25 +1,24 @@
-\beamer@sectionintoc {1}{Presentation Outline}{2}{0}{1}
-\beamer@sectionintoc {2}{Neural Ordinary Differential Equations}{4}{0}{2}
-\beamer@subsectionintoc {2}{1}{From ResNets to ODEs}{5}{0}{2}
-\beamer@subsectionintoc {2}{2}{Neural ODEs in practice}{6}{0}{2}
-\beamer@subsectionintoc {2}{3}{ODE-based models for dynamics}{7}{0}{2}
-\beamer@sectionintoc {3}{Motivation and Approach}{8}{0}{3}
-\beamer@subsectionintoc {3}{1}{Manifold hypothesis \& autoencoders}{9}{0}{3}
-\beamer@subsectionintoc {3}{2}{Why bring in geometry?}{10}{0}{3}
-\beamer@subsectionintoc {3}{3}{High-level idea of Neural Geodesic Flows}{11}{0}{3}
-\beamer@sectionintoc {4}{Differential Geometry in 10 Minutes}{12}{0}{4}
-\beamer@subsectionintoc {4}{1}{Manifolds and charts}{13}{0}{4}
-\beamer@subsectionintoc {4}{2}{Tangent vectors and the tangent bundle}{14}{0}{4}
-\beamer@subsectionintoc {4}{3}{Riemannian metric and geodesics}{15}{0}{4}
-\beamer@sectionintoc {5}{Neural Geodesic Flows Model}{16}{0}{5}
-\beamer@subsectionintoc {5}{1}{Data and mapping assumptions}{17}{0}{5}
-\beamer@subsectionintoc {5}{2}{Architecture: autoencoder + geodesic ODE}{18}{0}{5}
-\beamer@subsectionintoc {5}{3}{Forward pass and loss functions}{20}{0}{5}
-\beamer@subsectionintoc {5}{4}{Implementation sketch (JAX)}{22}{0}{5}
-\beamer@subsectionintoc {5}{5}{Relation to other models}{23}{0}{5}
-\beamer@sectionintoc {6}{Case Studies and Results}{24}{0}{6}
-\beamer@subsectionintoc {6}{1}{Toy example: geodesics on the sphere}{25}{0}{6}
-\beamer@subsectionintoc {6}{2}{MNIST classification}{26}{0}{6}
-\beamer@subsectionintoc {6}{3}{Two-body problem}{27}{0}{6}
-\beamer@subsectionintoc {6}{4}{Navier--Stokes equation}{28}{0}{6}
-\beamer@subsectionintoc {6}{5}{Limitations and future work}{29}{0}{6}
+\beamer@sectionintoc {1}{Presentation Outline}{3}{0}{1}
+\beamer@sectionintoc {2}{Neural Ordinary Differential Equations}{5}{0}{2}
+\beamer@subsectionintoc {2}{1}{From ResNets to ODEs}{6}{0}{2}
+\beamer@subsectionintoc {2}{2}{Neural ODEs in practice}{7}{0}{2}
+\beamer@subsectionintoc {2}{3}{ODE-based models for dynamics}{8}{0}{2}
+\beamer@sectionintoc {3}{Motivation and Approach}{9}{0}{3}
+\beamer@subsectionintoc {3}{1}{Manifold hypothesis \& autoencoders}{10}{0}{3}
+\beamer@subsectionintoc {3}{2}{Why bring in geometry?}{12}{0}{3}
+\beamer@subsectionintoc {3}{3}{High-level idea of Neural Geodesic Flows}{13}{0}{3}
+\beamer@sectionintoc {4}{Differential Geometry in 10 Minutes}{15}{0}{4}
+\beamer@subsectionintoc {4}{1}{Manifolds and charts}{16}{0}{4}
+\beamer@subsectionintoc {4}{2}{Tangent vectors and the tangent bundle}{17}{0}{4}
+\beamer@subsectionintoc {4}{3}{Riemannian metric and geodesics}{18}{0}{4}
+\beamer@sectionintoc {5}{Neural Geodesic Flows Model}{19}{0}{5}
+\beamer@subsectionintoc {5}{1}{Data and mapping assumptions}{20}{0}{5}
+\beamer@subsectionintoc {5}{2}{Architecture: autoencoder + geodesic ODE}{21}{0}{5}
+\beamer@subsectionintoc {5}{3}{Forward pass and loss functions}{24}{0}{5}
+\beamer@subsectionintoc {5}{4}{Implementation sketch (JAX)}{26}{0}{5}
+\beamer@subsectionintoc {5}{5}{Relation to other models}{27}{0}{5}
+\beamer@sectionintoc {6}{Case Studies and Results}{28}{0}{6}
+\beamer@subsectionintoc {6}{1}{Toy example: geodesics on the sphere}{29}{0}{6}
+\beamer@subsectionintoc {6}{2}{Two-body problem}{30}{0}{6}
+\beamer@subsectionintoc {6}{3}{Navier--Stokes equation}{31}{0}{6}
+\beamer@subsectionintoc {6}{4}{Limitations and future work}{32}{0}{6}

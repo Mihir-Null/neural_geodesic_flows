@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1765309076.89313 "/home/empty/Data/Data/Coursework/498k/neural_geodesic_flows/NeuralGradient.tex" "NeuralGradient.pdf" "NeuralGradient" 1765309078.14412 0
-  "/home/empty/Data/Data/Coursework/498k/neural_geodesic_flows/NeuralGradient.tex" 1765309076.81327 23738 ad561ddfcd1f5cd7b3307bb0cab26213 ""
+["pdflatex"] 1765476705.09101 "/home/empty/Data/Data/Coursework/498k/neural_geodesic_flows/NeuralGradient.tex" "NeuralGradient.pdf" "NeuralGradient" 1765476707.08117 0
+  "/home/empty/Data/Data/Coursework/498k/neural_geodesic_flows/NeuralGradient.tex" 1765476703.25389 24613 742aff061bda531adfccaf9a6cb58b94 ""
   "/usr/share/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc" 1755987285 2375 baa924870cfb487815765f9094cf3728 ""
   "/usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc" 1755987285 3486 c7eadf5dcc57b3b2d11736679f6636ba ""
   "/usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc" 1755987285 2405 5dcf2c1b967ee25cc46c58cd52244aed ""
@@ -256,11 +256,15 @@
   "/usr/share/texmf-dist/web2c/texmf.cnf" 1755987285 42087 b0f9697c952c8f5a8eede4134282cb0d ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1763442072 5306876 69c328245ae101f6bc10b01e1f2bf9d5 ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1763442144 2686926 77f27ce2a5465d02a063903ca7e78838 ""
-  "NeuralGradient.aux" 1765309078.05635 11711 2a1f6859ba0bed9a3ab41e9c087286c3 "pdflatex"
-  "NeuralGradient.nav" 1765309078.05765 7191 8c8eaeedd8f2bb50b067798475657e7c "pdflatex"
-  "NeuralGradient.out" 1765309078.05733 5078 30cfcbdab194a6c50486172f2d61b021 "pdflatex"
-  "NeuralGradient.tex" 1765309076.81327 23738 ad561ddfcd1f5cd7b3307bb0cab26213 ""
-  "NeuralGradient.toc" 1765309078.05767 1729 e68a32f7291f7cfdcdc68dcae3cf0d4f "pdflatex"
+  "14.vector-bundle.png" 1765475690.35982 30731 84cb8cd29f505232127dfaa6d7cd1deb ""
+  "NeuralGradient.aux" 1765476706.93533 11954 3d9bb914fd43eef78f7e042f767e2401 "pdflatex"
+  "NeuralGradient.nav" 1765476706.93682 7442 2583af24c324651c91a615ae81c625a2 "pdflatex"
+  "NeuralGradient.out" 1765476706.93645 4917 a470a5d69753e9380a6d59df8a57fddc "pdflatex"
+  "NeuralGradient.tex" 1765476703.25389 24613 742aff061bda531adfccaf9a6cb58b94 ""
+  "NeuralGradient.toc" 1765476706.93685 1667 40d5737383a2439bc2d25a55b8623c7d "pdflatex"
+  "funny.png" 1765475904.93408 370905 28c9f081f6296797549edb74a5d9c03b ""
+  "manifoldhyp.png" 1765475579.23626 41193 99310f58d6b0a216b5b62a7eb2a08dd4 ""
+  "ngf.png" 1765476404.57797 82098 db89064ecf3acf34cbb2ab0a2ba15c38 ""
   (generated)
   "NeuralGradient.aux"
   "NeuralGradient.log"

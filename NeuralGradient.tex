@@ -17,6 +17,13 @@
 
 \maketitle
 
+% Big Funny
+\begin{frame}
+    \frametitle{Motivation}
+    \centering % Centers the image on the slide
+    \includegraphics[width=0.5\textwidth]{funny.png}
+\end{frame}
+
 %------------------------ OUTLINE ------------------------%
 \section{Presentation Outline}
 \begin{frame}{Presentation Outline}
@@ -130,6 +137,12 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}
+    \frametitle{Manifold hypothesis}
+    \centering % Centers the image on the slide
+    \includegraphics[width=0.8\textwidth]{manifoldhyp.png}
+\end{frame}
+
 \subsection{Why bring in geometry?}
 
 \begin{frame}{Why Riemannian geometry for dynamics?}
@@ -161,7 +174,7 @@
 
 \subsection{High-level idea of Neural Geodesic Flows}
 
-\begin{frame}{Core idea in one picture}
+\begin{frame}{Core idea}
   \begin{itemize}
     \item Assume data are trajectories $y(t)$ living on some unknown manifold
       embedded in $\mathbb{R}^n$.
@@ -187,6 +200,12 @@
         \item and the metric $g_\theta$ (a neural net).
       \end{itemize}
   \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Dynamics}
+    \centering % Centers the image on the slide
+    \includegraphics[width=0.8\textwidth]{14.vector-bundle.png}
 \end{frame}
 
 %========================================================%
@@ -294,6 +313,8 @@
   \end{itemize}
 \end{frame}
 
+
+
 \subsection{Architecture: autoencoder + geodesic ODE}
 
 \begin{frame}{Encoder, metric network, decoder}
@@ -314,6 +335,12 @@
       \]
       (ensures positive definiteness).
   \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Manifold hypothesis}
+    \centering % Centers the image on the slide
+    \includegraphics[width=0.8\textwidth]{ngf.png}
 \end{frame}
 
 \begin{frame}{Geodesic ODE and exponential map}
@@ -467,33 +494,39 @@
   \end{itemize}
 \end{frame}
 
-\subsection{MNIST classification}
+% \begin{frame}
+%     \frametitle{Motivation}
+%     \centering % Centers the image on the slide
+%     \includegraphics[width=0.8\textwidth]{training.gif}
+% \end{frame}
 
-\begin{frame}{MNIST as a test of generalization}
-  \begin{itemize}
-    \item MNIST: 28$\times$28 grayscale images of digits 0--9.
-    \item Two NGF-style approaches:
-      \begin{enumerate}
-        \item Simple MLP encoder $\psi_\theta$, geodesic solve, then a small classifier head.
-        \item Convolutional encoder similar to the PyTorch MNIST example,
-          optionally followed by a geodesic solve.
-      \end{enumerate}
-    \item Variants:
-      \begin{itemize}
-        \item Different latent dimensions (e.g.\ 2 vs 10).
-        \item With and without actually running the geodesic solver.
-        \item Larger vs smaller encoder networks.
-      \end{itemize}
-    \item Observations:
-      \begin{itemize}
-        \item All models achieve $\sim 90$--$95\%$ test accuracy.
-        \item Using the geodesic solve usually does \emph{not} hurt performance,
-          and sometimes slightly helps.
-        \item Suggests NGFs can be adapted to ``standard'' ML tasks without
-          completely breaking performance.
-      \end{itemize}
-  \end{itemize}
-\end{frame}
+% \subsection{MNIST classification}
+
+% \begin{frame}{MNIST as a test of generalization}
+%   \begin{itemize}
+%     \item MNIST: 28$\times$28 grayscale images of digits 0--9.
+%     \item Two NGF-style approaches:
+%       \begin{enumerate}
+%         \item Simple MLP encoder $\psi_\theta$, geodesic solve, then a small classifier head.
+%         \item Convolutional encoder similar to the PyTorch MNIST example,
+%           optionally followed by a geodesic solve.
+%       \end{enumerate}
+%     \item Variants:
+%       \begin{itemize}
+%         \item Different latent dimensions (e.g.\ 2 vs 10).
+%         \item With and without actually running the geodesic solver.
+%         \item Larger vs smaller encoder networks.
+%       \end{itemize}
+%     \item Observations:
+%       \begin{itemize}
+%         \item All models achieve $\sim 90$--$95\%$ test accuracy.
+%         \item Using the geodesic solve usually does \emph{not} hurt performance,
+%           and sometimes slightly helps.
+%         \item Suggests NGFs can be adapted to ``standard'' ML tasks without
+%           completely breaking performance.
+%       \end{itemize}
+%   \end{itemize}
+% \end{frame}
 
 \subsection{Two-body problem}
 
