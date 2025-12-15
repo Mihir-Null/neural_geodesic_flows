@@ -19,6 +19,9 @@ import equinox as eqx
 
 import wandb
 
+import jax
+jax.config.update("jax_enable_x64", True)
+
 @eqx.filter_jit
 def update(model, loss_function, optimizer, opt_state, batch):
 
@@ -61,6 +64,15 @@ def train(model,
 
             #convert each element in the batch tuple to JAX arrays
             batch = tuple(jnp.array(tensor.numpy()) for tensor in batch)
+
+            # Debug: check the batch itself
+            flat = jnp.concatenate([jnp.ravel(x) for x in batch])
+            if not jnp.all(jnp.isfinite(flat)):
+                print("Non-finite values in batch:",
+                [jnp.any(~jnp.isfinite(x)) for x in batch])
+                print("mins:", [jnp.min(x) for x in batch])
+                print("maxs:", [jnp.max(x) for x in batch])
+                break
 
             #update the model according to a training step
             model, opt_state, loss = update(model,

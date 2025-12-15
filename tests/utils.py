@@ -6,6 +6,7 @@ Each is passed a function to be tested.
 
 import jax
 import jax.numpy as jnp
+import jax.scipy.linalg as jsp_linalg
 
 #each unit test should call this before the actual testing methods are called
 def printheading(unit_name):
@@ -71,7 +72,7 @@ def test_metric_evaluation(func, in_size, seed = 0):
     symmetry_error = jnp.mean(jnp.abs(g - g.T))
 
     #calculate eigenvalues to check positive definiteness
-    eigenvalues, _ = jax.scipy.linalg.eigh(g)  # Use eigh for symmetric matrices
+    eigenvalues, _ = jsp_linalg.eigh(g)  # Use eigh for symmetric matrices
 
     #check if all eigenvalues are positive for positive definiteness
     posdef = jnp.all(eigenvalues > 0)
@@ -85,3 +86,23 @@ def test_metric_evaluation(func, in_size, seed = 0):
         print(f"- Eigenvalues\n  {eigenvalues} > 0\n  => positive definite")
     else:
         print(f"- Eigenvalues\n  {eigenvalues}\n  => not positive definite!")
+
+
+def test_metric_signature(func, in_size, signature, seed=0):
+    #test symmetry and signature (counts of positive/negative eigenvalues)
+
+    key = jax.random.PRNGKey(seed)
+    x = jax.random.uniform(key, (in_size,), minval=0.1, maxval=0.9)
+
+    g = func(x)
+
+    symmetry_error = jnp.mean(jnp.abs(g - g.T))
+    eigenvalues, _ = jsp_linalg.eigh(g)
+
+    num_pos = jnp.sum(eigenvalues > 0)
+    num_neg = jnp.sum(eigenvalues < 0)
+
+    print("Signature test:")
+    print(f"- mean absolute symmetry error {symmetry_error}")
+    print(f"- Eigenvalues\n  {eigenvalues}")
+    print(f"- signature (#+, #-)=({int(num_pos)}, {int(num_neg)}) expected {signature}")

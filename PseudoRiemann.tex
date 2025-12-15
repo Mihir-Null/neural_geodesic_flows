@@ -1,0 +1,146 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{metropolis}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+
+\setbeamertemplate{section in toc}{\textbullet\ \inserttocsection}
+\setbeamertemplate{subsection in toc}{\hspace*{1.5em}\parbox[t]{0.75\textwidth}{\raggedright\footnotesize\textendash\ \inserttocsubsection}}
+
+\title{Neural Geodesic Flows}
+\subtitle{Extending to Pseudo-Riemannian Geometry}
+\author{Mihir Talati (after J.~B\"urge, ETH Zurich 2025)}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Overview}
+\begin{frame}{Presentation Outline}
+  \tableofcontents[subsectionstyle=show/show,subsubsectionstyle=hide]
+\end{frame}
+
+\begin{frame}
+    \frametitle{Motivation}
+    \centering
+    \includegraphics[width=0.8\textwidth]{funny.png}
+\end{frame}
+
+%========================================================%
+%  FOUNDATIONS & GEOMETRY
+%========================================================%
+\section{Foundations \& Geometry}
+
+\begin{frame}{Classical NNs and the need for an ansatz}
+  \begin{itemize}
+    \item Universal approximation: NNs can fit many functions, but we need a \textbf{good ansatz} for stability and meaning.
+    \item Our ansatz: observed dynamics are geodesic flows of a learned metric $\Rightarrow$ geometric invariants and structure.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Manifold hypothesis}
+  \begin{itemize}
+    \item Data in high-D $\mathbb{R}^n$ lie near a low-D manifold.
+  \end{itemize}
+  \centering\includegraphics[width=0.8\textwidth]{classifier.png}
+\end{frame}
+
+\begin{frame}{Geometry primer}
+  \begin{itemize}
+    \item Manifold + chart: local coordinates; tangent bundle $TM$ = positions + velocities.
+    \item Geodesics: shortest paths for a metric; governed by the geodesic equation $\ddot x^k + \Gamma^{k}_{ab}\dot x^a\dot x^b=0$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Tangent Planes}
+  \centering\includegraphics[width=0.8\textwidth]{14.vector-bundle.png}
+\end{frame}
+
+\begin{frame}{Example}
+  \centering\includegraphics[width=0.8\textwidth]{worldmap.png}
+\end{frame}
+
+\begin{frame}{Riemannian vs pseudo-Riemannian metrics}
+  \begin{itemize}
+    \item Riemannian: SPD metric, all spacelike (good for Euclidean-like systems).
+    \item Pseudo-Riemannian: mixed signature (timelike + spacelike), needed for Lorentzian/relativistic systems.
+    \item Extension: fixed-signature metric net + log-det regularizer; future: gating network to select signature automatically.
+  \end{itemize}
+\end{frame}
+
+%========================================================%
+%  MODEL & RESULTS
+%========================================================%
+\section{Model, Improvements, Results}
+
+\begin{frame}{ResNets to NGF (condensed)}
+  \begin{itemize}
+    \item A (very) simplified ResNet block:
+      \[
+        h_{k+1} = h_k + f_\theta(h_k)
+      \]
+      where $k$ is the layer index.
+    \item If you think of $k$ as discrete time and $f_\theta$ as a velocity field,
+      this is exactly a forward Euler step for the ODE
+      \[
+        \frac{dh}{dt} = f_\theta(h(t)).
+      \]
+    \item Idea of \emph{Neural ODEs}: instead of stacking many discrete layers,
+      treat depth as continuous time and let an ODE solver play the role of the network.
+    \item Forward pass $\Rightarrow$ solve an ODE; backward pass $\Rightarrow$ differentiate
+      \emph{through} the ODE solver (adjoint method, automatic differentiation, \dots). 
+    \item NGF: a structured Neural ODE where the vector field is the geodesic flow of a learned metric $g$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Neural Geodesic Flows}
+  \centering\includegraphics[width=0.8\textwidth]{manifoldhyp.png}
+\end{frame}
+
+\begin{frame}{Encoder, metric, decoder + flow}
+  \begin{itemize}
+    \item Learn encoder $\psi_\theta$ (to $(x,v)$), decoder $\phi_\theta$ (back to data), metric $g_\theta(x)$.
+    \item Baseline $g_\theta$: SPD via $I + L L^\top$.
+    \item Extension $g_\theta$: fixed-signature pseudo-R (positive \emph{and} negative eigenvalues) + log-det regularization; future gating for signature.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{NGF forward pass (visual)}
+    \centering
+    \includegraphics[width=0.8\textwidth]{ngf.png}
+\end{frame}
+
+\begin{frame}{Changes (model \& loss)}
+  \begin{itemize}
+    \item \textbf{Metric network}: new pseudo-R module with fixed signature $(p,q)$; softplus scales with signs.
+    \item \textbf{Conditioning}: \texttt{min\_diagonal}/\texttt{min\_scale} to keep $g$ non-degenerate near horizons.
+    \item \textbf{Regularizer}: loss on $\log|\det g|$ to penalize near-singular metrics (configurable floor/weight).
+    \item \textbf{Training}: PR runs use signatures $(1,1)$ or $(2,2)$, stronger metric regularization, gentler LR.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Why signature matters (physics alignment)}
+  \begin{itemize}
+    \item Lorentzian metrics encode causal structure (timelike vs spacelike).
+    \item Learned eigenvalues at a probe point:
+      \begin{itemize}
+        \item Minkowski\_prngf: $[-0.12,\;0.29]$ (one timelike, one spacelike).
+        \item AdS2\_prngf: $[-0.036,\;0.017]$ (Lorentzian, small curvature).
+        \item RNGF baselines: both $>0$ (purely spatial).
+      \end{itemize}
+    \item Interpretation: mixed signs capture lightcones/horizons; SPD forces all spacelike $\Rightarrow$ distorted distances and rollout drift.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Findings \& next steps (pseudo-R vs R)}
+  \begin{itemize}
+    \item Findings: pseudo-R keeps correct signature on Lorentzian toy spacetimes (Minkowski, AdS2, Schwarzschild); Riemannian baselines drift on curved Lorentzian rollouts.
+    \item Limitations: single chart; flat datasets don’t stress signature; Schwarzschild checkpoints need clean retrain.
+    \item Next steps: gating network to select signature adaptively; atlas-based NGFs; stronger pseudo-R regularizers and long-horizon tests.
+  \end{itemize}
+\end{frame}
+
+\end{document}

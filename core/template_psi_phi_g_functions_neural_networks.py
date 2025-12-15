@@ -9,7 +9,7 @@ Each neural network satifies:
 
 Required inputs/ouputs:
 x Networks for psi must have input = array of shape (2*dim_dataspace,) and output = array of shape (2*dim_M,)
-x Networks for g must have input = array of shape (dim_M,) and output = array of shape (dim_M,dim_M) being a SPD matrix
+x Networks for g must have input = array of shape (dim_M,) and output = array of shape (dim_M,dim_M) being symmetric and non-degenerate (Riemannian or pseudo-Riemannian)
 x The network for phi have input = array of shape (2*dim_M,) and output = array of shape (dim_dataspace)
 """
 
@@ -693,5 +693,90 @@ class NN_metric_regularized(eqx.Module):
 
         #for stability add the identity matrix (sum of pos def is again pos def)
         g = jnp.eye(self.dim_M) + g
+
+        return g
+
+
+class NN_pseudo_metric_fixed_signature(eqx.Module):
+    #Neural network metric with a fixed signature (p,q). Builds g = L diag(signs * scales) L^T.
+    #Diagonal entries of L and scales are kept positive via softplus to maintain non-degeneracy.
+
+    layers: list
+
+    dim_M: int
+    signature_signs: jnp.ndarray
+    min_diagonal: float
+    min_scale: float
+
+    arguments: dict
+    classname: str
+
+    #dictionary "arguments" has to hold dim_M (int), hidden_sizes (list of ints), signature (tuple (p,q) or list of +/-1),
+    #optionally min_diagonal (float) and min_scale (float) for conditioning safeguards.
+    def __init__(self, arguments, key=jax.random.PRNGKey(0)):
+
+        required_keys = ['dim_M', 'hidden_sizes', 'signature']
+        for dict_key in required_keys:
+            if dict_key not in arguments:
+                raise ValueError(f"Missing required key '{dict_key}' in arguments")
+
+        self.dim_M = arguments['dim_M']
+        self.min_diagonal = arguments.get('min_diagonal', 1e-3)
+        self.min_scale = arguments.get('min_scale', 1e-3)
+
+        signature = arguments['signature']
+        #allow signature as (p,q) or as list/tuple of +/-1
+        if isinstance(signature, (list, tuple)) and len(signature) == 2 and all(isinstance(s, int) for s in signature):
+            p, q = signature
+            if p + q != self.dim_M:
+                raise ValueError(f"Signature (p,q)=({p},{q}) must satisfy p+q=dim_M={self.dim_M}")
+            signs = jnp.concatenate([jnp.ones(p), -jnp.ones(q)])
+        elif isinstance(signature, (list, tuple)) and len(signature) == self.dim_M:
+            signs = jnp.array(signature, dtype=jnp.float32)
+            if not jnp.all(jnp.isin(signs, jnp.array([-1.0, 1.0]))):
+                raise ValueError("Signature list must only contain -1 or 1 entries.")
+            if jnp.isclose(jnp.linalg.det(jnp.diag(signs)), 0.0):
+                raise ValueError("Signature list must describe a non-degenerate metric.")
+        else:
+            raise ValueError("signature must be a tuple (p,q) summing to dim_M or a list of +/-1 of length dim_M.")
+
+        self.signature_signs = signs
+
+        #initialize random keys
+        keys = jax.random.split(key, len(arguments['hidden_sizes']) + 1)
+
+        output_size = self.dim_M * (self.dim_M + 1) // 2 + self.dim_M  # components for L + scales
+        layer_sizes = [self.dim_M] + arguments['hidden_sizes'] + [output_size]
+        self.layers = [eqx.nn.Linear(layer_sizes[i], layer_sizes[i + 1], key=keys[i]) for i in range(len(layer_sizes) - 1)]
+
+        self.arguments = arguments
+        self.classname = "NN_pseudo_metric_fixed_signature"
+
+    def __call__(self, x):
+
+        for layer in self.layers[:-1]:
+            x = layer(x)
+            x = jax.nn.tanh(x)
+
+        learnt_components = self.layers[-1](x)
+
+        #split into lower triangle components and scale components
+        num_L_params = self.dim_M * (self.dim_M + 1) // 2
+        L_components = learnt_components[:num_L_params]
+        scale_components = learnt_components[num_L_params:]
+
+        #populate a lower triangle (m by m) matrix L with m(m+1)/2 learnt components
+        L = jnp.zeros((self.dim_M, self.dim_M))
+        lower_triangle_indices = jnp.tril_indices(self.dim_M)
+        L = L.at[lower_triangle_indices].set(L_components)
+
+        #enforce positivity on the diagonal entries of L for invertibility
+        L = L.at[jnp.diag_indices(self.dim_M)].set(jax.nn.softplus(jnp.diag(L)) + self.min_diagonal)
+
+        #scales for signature enforcement (all positive, then signed)
+        scales = jax.nn.softplus(scale_components) + self.min_scale
+        Sigma = jnp.diag(self.signature_signs * scales)
+
+        g = L @ Sigma @ L.T
 
         return g

@@ -23,6 +23,7 @@ from core.template_psi_phi_g_functions_neural_networks import (
     identity_metric,
     NN_metric,
     NN_metric_regularized,
+    NN_pseudo_metric_fixed_signature,
 )
 
 #get the relevant loss functions

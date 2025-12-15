@@ -31,11 +31,21 @@ dim_M : int           #dimension of the latent M
 
 psi : callable        #encoder dataspace ---> TM, input shape (dim_dataspace,), output shape (2dim_M,)
 phi : callable        #decoder TM ---> dataspace, input shape (2dim_M), output shape (dim_dataspace,)
-g : callable          #metric tensor on M, input shape (dim_M), output shape (dim_M,dim_M) and required to be a SPD matrix
+g : callable          #metric tensor on M, input shape (dim_M), output shape (dim_M,dim_M) and required to be symmetric and non-degenerate (Riemannian or pseudo-Riemannian)
 ```
 Those are all passed at initialization. Thereby `psi,phi,g` can either be some hard coded functions or any neural network (or any function really, so long as the input-output sizes are correct).
 
 The geodesic equation depends on partial derivatives of the metric tensor $g$ (which `TangentBundle_single_chart_atlas` computes exactly using JAX autodifferentiation), so if `g` is initialized as a neural network it becomes a neural geodesic ODE.
+
+To model pseudo-Riemannian manifolds (fixed signature $(p,q)$) supply a metric network such as `NN_pseudo_metric_fixed_signature` with `g_arguments["signature"]` set accordingly. The earlier SPD parameterizations remain available for purely Riemannian latent spaces.
+
+## Pseudo Riemannian Extensions
+
+- **Metric parameterizations:** Added `NN_pseudo_metric_fixed_signature`, which builds `g = L diag(signs * scales) L^T` to enforce a fixed signature $(p,q)$. Diagonals use `softplus` with small floors to keep $g$ non-degenerate. Existing SPD metrics (`NN_metric`, `NN_metric_regularized`) are unchanged.
+- **Inverse stability:** Geodesic and curvature computations now use linear solves (`jax.scipy.linalg.solve`) instead of explicit matrix inverses; this is robust for indefinite but non-degenerate metrics.
+- **Degeneracy regularization:** `trajectory_loss` optionally takes `metric_reg_weight` and `metric_logabsdet_floor`, adding a penalty on $\log|\det g|$ to discourage near-singular metrics during training.
+- **Signature testing helper:** `tests/utils.py` now includes `test_metric_signature` to check symmetry and the $(\#+,\#-)$ eigenvalue counts for a given metric.
+- **Docs and imports:** README metric description now allows pseudo-Riemannian metrics, and `applications/general_training.py` imports the new metric class for use in experiments.
 
 ### Properties of NGFs
 The theoretical properties of neural geodesic flows include

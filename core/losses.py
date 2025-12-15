@@ -4,6 +4,7 @@ Collection of loss functions
 
 import jax
 import jax.numpy as jnp
+import jax.nn as jnn
 
 #the below prediction losses needs to behave differently in the single and multi chart approach,
 #namely, in the multi chart approach latent points are tuples (chart_id, z), in the single chart they are arrays z
@@ -35,6 +36,27 @@ def safe_filtered_MSE(data, predictions):
     mse = jnp.sum(square_error) / count_valid   
 
     return mse
+
+#penalize metrics that become (near) singular by pushing log|det g| above a floor
+#mask is optional float/bool array of shape (N,) to ignore padded/invalid points
+def metric_logabsdet_penalty(tangentbundle, x_points, logabsdet_floor=-10.0, mask=None):
+
+    mask = jnp.ones(x_points.shape[0], dtype=jnp.float32) if mask is None else mask.astype(jnp.float32)
+
+    #zero-out invalid points so we never evaluate g on NaNs
+    x_points_safe = jnp.where(mask[:, None] > 0, x_points, jnp.zeros_like(x_points))
+
+    def logabsdet(x):
+        _, logdet = jnp.linalg.slogdet(tangentbundle.g(x))
+        return logdet
+
+    logs = jax.vmap(logabsdet)(x_points_safe)
+    penalty = jnn.softplus(logabsdet_floor - logs)
+
+    weighted = penalty * mask
+    denom = jnp.maximum(jnp.sum(mask), 1.0)
+
+    return jnp.sum(weighted) / denom
 
 #this method applies the function to a point safely:
 #if it's non nan, it just applies it
@@ -147,7 +169,7 @@ def trajectory_prediction_loss(tangentbundle, trajectories, times):
     return predictive_error_dataspace + predictive_error_latentspace
 
 
-def trajectory_loss(tangentbundle, trajectories, times):
+def trajectory_loss(tangentbundle, trajectories, times, metric_reg_weight=0.0, metric_logabsdet_floor=-10.0):
 
         #find the predictive error (will be latent + dataspace)
         predictive_error = trajectory_prediction_loss(tangentbundle, trajectories, times)
@@ -155,5 +177,21 @@ def trajectory_loss(tangentbundle, trajectories, times):
         #find the reconstructive error
         reconstructive_error = trajectory_reconstruction_loss(tangentbundle, trajectories, times)
 
+        metric_reg = 0.0
+        if metric_reg_weight > 0.0:
+            #flatten all trajectory points, encode safely, and extract chart locations x
+            points = trajectories.reshape(-1, trajectories.shape[-1])
+            safe_encode = lambda point: safe_function_apply(tangentbundle.psi, point)
+            encoded_points = jax.vmap(safe_encode, in_axes=0)(points)
+            xs = encoded_points[..., :tangentbundle.dim_M]
+
+            valid_mask = ~jnp.isnan(xs).any(axis=1)
+            metric_reg = metric_logabsdet_penalty(
+                tangentbundle,
+                xs,
+                logabsdet_floor=metric_logabsdet_floor,
+                mask=valid_mask,
+            )
+
         #return the sum of prediction and reconstruction error
-        return predictive_error + reconstructive_error
+        return predictive_error + reconstructive_error + metric_reg_weight * metric_reg

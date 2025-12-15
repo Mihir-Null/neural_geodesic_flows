@@ -7,10 +7,12 @@ so that they can be hard coded functions or neural networks.
 
 All methods and calculations are done mathematically, i.e. not with data arrays
 but rather with the exact input format that the methods are mathematically defined for (single points or vectors).
+The metric is assumed to be symmetric and non-degenerate; it may be Riemannian or pseudo-Riemannian.
 """
 
 import jax
 import jax.numpy as jnp
+import jax.scipy.linalg as jsp_linalg
 
 import equinox as eqx
 
@@ -81,8 +83,8 @@ class TangentBundle_single_chart_atlas(eqx.Module):
         partial_g = jax.jacfwd(G)(x)
         partial_g = jnp.transpose(partial_g, axes=(2, 0, 1))
 
-        #compute inverse of g(x) once
-        inverse_g = jnp.linalg.inv(self.g(x))
+        #compute inverse of g(x) once using a linear solve for stability (works for indefinite metrics)
+        inverse_g = jsp_linalg.solve(self.g(x), jnp.eye(self.dim_M))
 
         #formula (summation over i) Gamma^k_ab = 1/2 g^ki ( partial_a g_ib + partial_b g_ai - partial_i g_ab)
         #compute each term of shape (m,m,m)
@@ -249,7 +251,7 @@ class TangentBundle_single_chart_atlas(eqx.Module):
         Ric = self.Ricci_curvature(x)
 
         #get the inverse metric g^ij partial_i  tensor partial_j
-        g_inv = jnp.linalg.inv(self.g(x))
+        g_inv = jsp_linalg.solve(self.g(x), jnp.eye(self.dim_M))
 
         scal = jnp.einsum('ij,ij->',g_inv,Ric, optimize="optimal")
 

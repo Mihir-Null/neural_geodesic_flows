@@ -134,24 +134,26 @@ def load_model(model_name, psi_initializer, phi_initializer, g_initializer):
     with open(model_high_level_params_path, "r") as f:
         model_high_level_params = json.load(f)
 
-    # initialize correct type neural networks (could also be hardcoded function, dependinging on the initializer)
-    psi_NN = psi_initializer(model_high_level_params["psi_arguments"])
+    # try to load using the reconstructed prototype; if dtype mismatch arises, fall back to like=None
+    model = None
+    try:
+        # rebuild prototype to match saved structure
+        psi_NN = psi_initializer(model_high_level_params["psi_arguments"])
+        phi_NN = phi_initializer(model_high_level_params["phi_arguments"])
+        g_NN = g_initializer(model_high_level_params["g_arguments"])
 
-    phi_NN = phi_initializer(model_high_level_params["phi_arguments"])
+        model_prototype = TangentBundle(
+            dim_dataspace=model_high_level_params["dim_dataspace"],
+            dim_M=model_high_level_params["dim_M"],
+            psi=psi_NN,
+            phi=phi_NN,
+            g=g_NN,
+        )
 
-    g_NN = g_initializer(model_high_level_params["g_arguments"])
-
-    # using the models high level parameters create an instance of the exact same form
-    model_prototype = TangentBundle(
-        dim_dataspace=model_high_level_params["dim_dataspace"],
-        dim_M=model_high_level_params["dim_M"],
-        psi=psi_NN,
-        phi=phi_NN,
-        g=g_NN,
-    )
-
-    # initialize the saved model
-    model = eqx.tree_deserialise_leaves(model_path, like=model_prototype)
+        model = eqx.tree_deserialise_leaves(model_path, like=model_prototype)
+    except Exception as e:
+        print(f"Warning: prototype-based load failed for {model_name} ({e}); retrying with like=None.")
+        model = eqx.tree_deserialise_leaves(model_path, like=None)
 
     print(f"\nLoaded model {model_name}\n")
 
